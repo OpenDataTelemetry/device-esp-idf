@@ -1,0 +1,7 @@
+source "/home/rogerio/Tools/Espressif/esp/esp-idf/components/app_update/Kconfig.projbuild"
+source "/home/rogerio/Tools/Espressif/esp/esp-idf/components/bootloader/Kconfig.projbuild"
+source "/home/rogerio/Tools/Espressif/esp/esp-idf/components/esp_rom/Kconfig.projbuild"
+source "/home/rogerio/Tools/Espressif/esp/esp-idf/components/esptool_py/Kconfig.projbuild"
+source "/home/rogerio/Tools/Espressif/esp/esp-idf/components/partition_table/Kconfig.projbuild"
+source "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/tcp_client/main/Kconfig.projbuild"
+source "/home/rogerio/Tools/Espressif/esp/esp-idf/examples/common_components/protocol_examples_common/Kconfig.projbuild"
