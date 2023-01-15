@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/http_client/build/CMakeFiles/bootloader"
+		},
+		{
+			"file" : "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/http_client/build/CMakeFiles/bootloader.rule"
+		},
+		{
+			"file" : "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/http_client/build/CMakeFiles/bootloader-complete.rule"
+		},
+		{
+			"file" : "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/http_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule"
+		},
+		{
+			"file" : "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/http_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule"
+		},
+		{
+			"file" : "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/http_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule"
+		},
+		{
+			"file" : "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/http_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule"
+		},
+		{
+			"file" : "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/http_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule"
+		},
+		{
+			"file" : "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/http_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule"
+		},
+		{
+			"file" : "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/http_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"bootloader"
+		],
+		"name" : "bootloader"
+	}
+}
