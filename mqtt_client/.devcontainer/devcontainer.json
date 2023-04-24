@@ -3,7 +3,11 @@
 {
 	"name": "ESP-IDF QEMU",
 	"build": {
-		"dockerfile": "Dockerfile"
+		"dockerfile": "Dockerfile",
+		"args": {
+			"USERNAME": "vscode",
+			"BUILDKIT_INLINE_CACHE": "0"
+		}
 	},
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
@@ -25,5 +29,9 @@
 		"idf.toolsPath": "/opt/esp",
 		"idf.gitPath": "/usr/bin/git"
 	},
-	"runArgs": ["--privileged"]
+	"runArgs": [
+		"--privileged",
+		"--name",
+		"ESP32_devcontainer"
+	]
 }

@@ -1,9 +1,9 @@
-set(CMAKE_HOST_SYSTEM "Linux-5.15.0-56-generic")
+set(CMAKE_HOST_SYSTEM "Linux-5.19.0-32-generic")
 set(CMAKE_HOST_SYSTEM_NAME "Linux")
-set(CMAKE_HOST_SYSTEM_VERSION "5.15.0-56-generic")
+set(CMAKE_HOST_SYSTEM_VERSION "5.19.0-32-generic")
 set(CMAKE_HOST_SYSTEM_PROCESSOR "x86_64")
 
-include("/home/rogerio/Tools/Espressif/esp/esp-idf/tools/cmake/toolchain-esp32.cmake")
+include("/opt/esp/idf/tools/cmake/toolchain-esp32.cmake")
 
 set(CMAKE_SYSTEM "Generic")
 set(CMAKE_SYSTEM_NAME "Generic")

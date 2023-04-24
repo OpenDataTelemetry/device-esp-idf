@@ -1,4 +1,4 @@
-/* * Data converted from /home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/mqtt-tcp/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from /workspaces/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 .section .rodata.embedded

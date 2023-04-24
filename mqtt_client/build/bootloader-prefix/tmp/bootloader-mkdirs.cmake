@@ -4,16 +4,16 @@
 cmake_minimum_required(VERSION 3.5)
 
 file(MAKE_DIRECTORY
-  "/home/rogerio/Tools/Espressif/esp/esp-idf/components/bootloader/subproject"
-  "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/mqtt-tcp/build/bootloader"
-  "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/mqtt-tcp/build/bootloader-prefix"
-  "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/mqtt-tcp/build/bootloader-prefix/tmp"
-  "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/mqtt-tcp/build/bootloader-prefix/src/bootloader-stamp"
-  "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/mqtt-tcp/build/bootloader-prefix/src"
-  "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/mqtt-tcp/build/bootloader-prefix/src/bootloader-stamp"
+  "/opt/esp/idf/components/bootloader/subproject"
+  "/workspaces/build/bootloader"
+  "/workspaces/build/bootloader-prefix"
+  "/workspaces/build/bootloader-prefix/tmp"
+  "/workspaces/build/bootloader-prefix/src/bootloader-stamp"
+  "/workspaces/build/bootloader-prefix/src"
+  "/workspaces/build/bootloader-prefix/src/bootloader-stamp"
 )
 
 set(configSubDirs )
 foreach(subDir IN LISTS configSubDirs)
-    file(MAKE_DIRECTORY "/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/mqtt-tcp/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
+    file(MAKE_DIRECTORY "/workspaces/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
 endforeach()
