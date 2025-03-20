@@ -4,14 +4,15 @@
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/gen_project_binary.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/app.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/erase_flash.dir
-/Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/uf2.dir
-/Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/uf2-app.dir
+/Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/merge-bin.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/monitor.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/_project_elf_src.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/bootloader.elf.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/size.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/size-files.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/size-components.dir
+/Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/uf2.dir
+/Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/uf2-app.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/edit_cache.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/CMakeFiles/rebuild_cache.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/CMakeFiles/edit_cache.dir
@@ -50,6 +51,8 @@
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/efuse/CMakeFiles/efuse_test_table.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/efuse/CMakeFiles/edit_cache.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/efuse/CMakeFiles/rebuild_cache.dir
+/Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_security/CMakeFiles/edit_cache.dir
+/Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_security/CMakeFiles/rebuild_cache.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_system/CMakeFiles/__idf_esp_system.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_system/CMakeFiles/edit_cache.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_system/CMakeFiles/rebuild_cache.dir
@@ -58,6 +61,8 @@
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_hw_support/CMakeFiles/rebuild_cache.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_hw_support/port/esp32c6/CMakeFiles/edit_cache.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_hw_support/port/esp32c6/CMakeFiles/rebuild_cache.dir
+/Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_hw_support/lowpower/CMakeFiles/edit_cache.dir
+/Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_hw_support/lowpower/CMakeFiles/rebuild_cache.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_common/CMakeFiles/__idf_esp_common.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_common/CMakeFiles/edit_cache.dir
 /Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf-c6/build/bootloader/esp-idf/esp_common/CMakeFiles/rebuild_cache.dir
