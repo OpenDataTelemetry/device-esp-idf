@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/tcp_client/build/CMakeFiles/bootloader
+/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/tcp_client/build/CMakeFiles/bootloader.rule
+/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/tcp_client/build/CMakeFiles/bootloader-complete.rule
+/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/tcp_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/tcp_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/tcp_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/tcp_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/tcp_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/tcp_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+/home/rogerio/Git/OpenDataTelemetry/device-data-esp32-idf/tcp_client/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule

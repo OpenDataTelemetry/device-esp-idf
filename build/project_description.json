@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "uart_async_rxtxtasks",
-    "project_version":    "0f42b51-dirty",
+    "project_version":    "19a6ba9-dirty",
     "project_path":       "/Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf",
     "idf_path":           "/Users/rogeriocassares/esp/v5.4.1/esp-idf",
     "build_dir":          "/Users/rogeriocassares/Git/OpenDataTelemetry/device-esp-idf/build",
