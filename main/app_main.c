@@ -1,4 +1,4 @@
-/* MQTT (over TCP) Example
+/* UART asynchronous example, that uses separate RX and TX tasks
 
    This example code is in the Public Domain (or CC0 licensed, at your option.)
 
@@ -6,230 +6,199 @@
    software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
    CONDITIONS OF ANY KIND, either express or implied.
 */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <string.h>
-
-#include "esp_wifi.h"
-#include "esp_system.h"
-#include "nvs_flash.h"
-#include "esp_event.h"
-#include "esp_log.h"
-#include "esp_netif.h"
-#include "protocol_examples_common.h"
-
+/*UART ASYNC*/
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/semphr.h"
+#include "esp_system.h"
+#include "esp_log.h"
+#include "driver/uart.h"
+#include "string.h"
+#include "driver/gpio.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+/*CAN*/
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
+#include "esp_err.h"
+#include "driver/twai.h"
 
-#include "lwip/sockets.h"
-#include "lwip/dns.h"
-#include "lwip/netdb.h"
+/*UART ASYNC*/
+static const int RX_BUF_SIZE = 2048;
+#define TXD_PIN (GPIO_NUM_18)
+#define RXD_PIN (GPIO_NUM_17)
 
-#include "mqtt_client.h"
-#include "gps.h"
+/*CAN*/
+/* --------------------- Definitions and static variables ------------------ */
+// Example Configuration
+#define NO_OF_ITERS 3
+#define RX_TASK_PRIO 9
+#define TX_GPIO_NUM CONFIG_EXAMPLE_TX_GPIO_NUM
+#define RX_GPIO_NUM CONFIG_EXAMPLE_RX_GPIO_NUM
+#define EXAMPLE_TAG "TWAI Listen Only"
 
-static const char *TAG = "APP";
-static const char *TAG_GPS = "GPS";
-// static const char *TAG_SDCARD = "SDCARD";
-// static const char *TAG_XBEE = "XBEE";
-static const char *TAG_MQTT = "MQTT";
+#define ID_MASTER_STOP_CMD 0x0A0
+#define ID_MASTER_START_CMD 0x0A1
+#define ID_MASTER_PING 0x0A2
+#define ID_SLAVE_STOP_RESP 0x0B0
+#define ID_SLAVE_DATA 0x0B1
+#define ID_SLAVE_PING_RESP 0x0B2
 
-// GPS
-#define TIME_ZONE (0)    // UTC Time
-#define YEAR_BASE (2000) // date in GPS starts from 2000
+static const twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+// static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_25KBITS();
+static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_1MBITS();
+// static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_1MBITS();
+// Set TX queue length to 0 due to listen only mode
+static const twai_general_config_t g_config = {.mode = TWAI_MODE_LISTEN_ONLY,
+                                               .tx_io = TX_GPIO_NUM,
+                                               .rx_io = RX_GPIO_NUM,
+                                               .clkout_io = TWAI_IO_UNUSED,
+                                               .bus_off_io = TWAI_IO_UNUSED,
+                                               .tx_queue_len = 0,
+                                               .rx_queue_len = 5,
+                                               .alerts_enabled = TWAI_ALERT_NONE,
+                                               .clkout_divider = 0};
 
-static void log_error_if_nonzero(const char *message, int error_code)
+static SemaphoreHandle_t rx_sem;
+
+/* --------------------------- Tasks and Functions -------------------------- */
+
+static void twai_receive_task(void *arg)
 {
-    if (error_code != 0)
+  xSemaphoreTake(rx_sem, portMAX_DELAY);
+
+  while (1)
+  {
+    twai_message_t rx_msg;
+    twai_receive(&rx_msg, portMAX_DELAY);
+    uint32_t data = 0;
+    for (int i = 0; i < rx_msg.data_length_code; i++)
     {
-        ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
+      data |= (rx_msg.data[i] << (i * 8));
     }
+    ESP_LOGI(EXAMPLE_TAG, "Received %u data bytes with value %" PRIu32, rx_msg.data_length_code, data);
+    vTaskDelay(100);
+  }
+
+  xSemaphoreGive(rx_sem);
+  vTaskDelete(NULL);
 }
 
-/* Event source task related definitions */
-ESP_EVENT_DEFINE_BASE(GPS_EVENTS);
-// ESP_EVENT_DEFINE_BASE(IMU_EVENTS);
-// ESP_EVENT_DEFINE_BASE(CAN_EVENTS);
-// ESP_EVENT_DEFINE_BASE(SDCARD_EVENTS);
-// ESP_EVENT_DEFINE_BASE(XBEE_EVENTS);
-// ESP_EVENT_DEFINE_BASE(MQTT_EVENTS);
 
-static void mqtt_event_handler(void *event_handler_arg, esp_event_base_t base, int32_t event_id, void *event_data)
+int sendData(const char *logName, const char *data)
 {
-    ESP_LOGD(TAG_MQTT, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
-    esp_mqtt_event_handle_t event = event_data;
-    esp_mqtt_client_handle_t client = event->client;
-    ESP_LOGI(TAG_MQTT, "############## MQTT MQTT CLIENT: %p", client);
-
-    int msg_id;
-
-    switch ((esp_mqtt_event_id_t)event_id)
-    {
-    case MQTT_EVENT_CONNECTED:
-        ESP_LOGI(TAG_MQTT, "MQTT_EVENT_CONNECTED");
-        break;
-    case MQTT_EVENT_DISCONNECTED:
-        ESP_LOGI(TAG_MQTT, "MQTT_EVENT_DISCONNECTED");
-        break;
-    case MQTT_EVENT_PUBLISHED:
-        ESP_LOGI(TAG_MQTT, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
-        break;
-    case MQTT_EVENT_DATA:
-        ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-        ESP_LOGI(TAG_MQTT, "sent publish successful, msg_id=%d", msg_id);
-        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        printf("DATA=%.*s\r\n", event->data_len, event->data);
-        break;
-    case MQTT_EVENT_ERROR:
-        ESP_LOGI(TAG_MQTT, "MQTT_EVENT_ERROR");
-        if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT)
-        {
-            log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
-            log_error_if_nonzero("reported from tls stack", event->error_handle->esp_tls_stack_err);
-            log_error_if_nonzero("captured as transport's socket errno", event->error_handle->esp_transport_sock_errno);
-            ESP_LOGI(TAG_MQTT, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
-        }
-        break;
-    default:
-        ESP_LOGI(TAG_MQTT, "Other event id:%d", event->event_id);
-        break;
-    }
+  const int len = strlen(data);
+  const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
+  ESP_LOGI(logName, "Wrote %d bytes", txBytes);
+  return txBytes;
 }
 
-static void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+
+void init(void)
 {
-    gps_t *gps = NULL;
-    esp_mqtt_client_handle_t client = event_handler_arg;
-    ESP_LOGI(TAG_MQTT, "############## MQTT GPS CLIENT: %p", client);
-
-    // /* data buffers */
-    // uint8_t buff_up[1024]; /* buffer to compose the upstream packet */
-    // int buff_index;
-    // uint8_t buff_ack[32];
-    // /* start of JSON structure */
-    // memcpy((void *)(buff_up + buff_index), (void *)"{\"rxpk\":[", 9);
-    // buff_index += 9;
-
-    switch (event_id)
-    {
-    case GPS_UPDATE:
-        gps = (gps_t *)event_data;
-        /* print information parsed from GPS statements */
-        ESP_LOGI(TAG_GPS, "%d/%d/%d %d:%d:%d => \r\n"
-                          "\t\t\t\t\t\tlatitude   = %.05f°N\r\n"
-                          "\t\t\t\t\t\tlongitude = %.05f°E\r\n"
-                          "\t\t\t\t\t\taltitude   = %.02fm\r\n"
-                          "\t\t\t\t\t\tspeed      = %fm/s",
-                 gps->date.year + YEAR_BASE, gps->date.month, gps->date.day,
-                 gps->tim.hour + TIME_ZONE, gps->tim.minute, gps->tim.second,
-                 gps->latitude, gps->longitude, gps->altitude, (gps->speed) * 3.6);
-
-        // if (gps->valid)
-        // {
-            // char message = gps->latitude;
-            int msg_id = esp_mqtt_client_publish(client, "OpenDataTelemetry/FSAELive/IC/001/rx", "message", 0, 1, 0);
-        // }
-        break;
-    case GPS_UNKNOWN:
-        /* print unknown statements */
-        ESP_LOGW(TAG_GPS, "Unknown statement:%s", (char *)event_data);
-        break;
-    default:
-        break;
-    }
+  const uart_config_t uart_config = {
+      .baud_rate = 115200,
+      .data_bits = UART_DATA_8_BITS,
+      .parity = UART_PARITY_DISABLE,
+      .stop_bits = UART_STOP_BITS_1,
+      .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+      .source_clk = UART_SCLK_DEFAULT,
+  };
+  // We won't use a buffer for sending data.
+  uart_driver_install(UART_NUM_1, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
+  uart_param_config(UART_NUM_1, &uart_config);
+  uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 }
 
-// static void imu_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+void send_gps_task(void)
+{
+  static const char *GPS_TASK_TAG = "GPS_TASK";
+  sendData(GPS_TASK_TAG, "AT\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+  sendData(GPS_TASK_TAG, "AT+CGNSSPWR=1\r\n\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT+CGPSHOT\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT+CGNSSTST=1\r\n");
+  vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+  sendData(GPS_TASK_TAG, "AT+CGPSINFO=1\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT+CGNSSINFO=1\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT+CGNSSPORTSWITCH=0,1\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT+CGNSSNMEA=1,1,1,1,1,1,0,0,0,0\\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+}
+
+
+// static void tx_task(void *arg)
 // {
-//     switch (event_id)
-//     {
-//     case IMU_1:
-//         break;
-//     default:
-//         break;
-//     }
+//   static const char *TX_TASK_TAG = "TX_TASK";
+//   esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
+//   while (1)
+//   {
+//     sendData(TX_TASK_TAG, "AT\r\n");
+//     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    
+//   }
 // }
 
-// static void can_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-// {
-//     switch (event_id)
-//     {
-//     case CAN_1:
-//         break;
-//     default:
-//         break;
-//     }
-// }
-
-// static void sdcard_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-// {
-//     switch (event_id)
-//     {
-//     case SDCARD_1:
-//         break;
-//     default:
-//         break;
-//     }
-// }
-
-// static void xbee_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-// {
-//     switch (event_id)
-//     {
-//     case XBEE_1:
-//         break;
-//     default:
-//         break;
-//     }
-// }
+static void rx_task(void *arg)
+{
+  static const char *RX_TASK_TAG = "RX_TASK";
+  esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
+  uint8_t *data = (uint8_t *)malloc(RX_BUF_SIZE + 1);
+  while (1)
+  {
+    const int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 1000 / portTICK_PERIOD_MS);
+    if (rxBytes > 0)
+    {
+      data[rxBytes] = 0;
+      ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
+      ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
+    }
+  }
+  free(data);
+}
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "[APP] Startup..");
-    ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
-    ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
+  init();
+  xTaskCreate(rx_task, "uart_rx_task", 2048 * 2, NULL, configMAX_PRIORITIES - 1, NULL);
+  // xTaskCreate(tx_task, "uart_tx_task", 2048 * 2, NULL, configMAX_PRIORITIES - 2, NULL);
 
-    esp_log_level_set("*", ESP_LOG_INFO);
-    esp_log_level_set("MQTT_CLIENT", ESP_LOG_VERBOSE);
-    esp_log_level_set("MQTT_EXAMPLE", ESP_LOG_VERBOSE);
-    esp_log_level_set("TRANSPORT_BASE", ESP_LOG_VERBOSE);
-    esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
-    esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
-    esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
+  
+  // /*CAN*/
+  rx_sem = xSemaphoreCreateBinary();
+  xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, RX_TASK_PRIO, NULL, tskNO_AFFINITY);
 
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+  // Install and start TWAI driver
+  ESP_ERROR_CHECK(twai_driver_install(&g_config, &t_config, &f_config));
+  ESP_LOGI(EXAMPLE_TAG, "Driver installed");
+  ESP_ERROR_CHECK(twai_start());
+  ESP_LOGI(EXAMPLE_TAG, "Driver started");
 
-    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-     * Read "Establishing Wi-Fi or Ethernet Connection" section in
-     * examples/protocols/README.md for more information about this function.
-     */
-    ESP_ERROR_CHECK(example_connect());
+  xSemaphoreGive(rx_sem); // Start RX task
+  vTaskDelay(pdMS_TO_TICKS(100));
+  xSemaphoreTake(rx_sem, portMAX_DELAY); // Wait for RX task to complete
 
-    esp_mqtt_client_config_t mqtt_cfg = {
-        .uri = CONFIG_BROKER_URL,
-        .username = "public",
-        .password = "public",
-    };
+  // Stop and uninstall TWAI driver
+  ESP_ERROR_CHECK(twai_stop());
+  ESP_LOGI(EXAMPLE_TAG, "Driver stopped");
+  ESP_ERROR_CHECK(twai_driver_uninstall());
+  ESP_LOGI(EXAMPLE_TAG, "Driver uninstalled");
 
-    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
-    /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
-    esp_mqtt_client_start(client);
+  // xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, RX_TASK_PRIO, NULL, tskNO_AFFINITY);
+  // Cleanup
+  vSemaphoreDelete(rx_sem);
 
-    // gps_app_start();
-    /* NMEA parser configuration */
-    nmea_parser_config_t config = NMEA_PARSER_CONFIG_DEFAULT();
-    /* init NMEA parser library */
-    nmea_parser_handle_t nmea_hdl = nmea_parser_init(&config);
-    /* register event handler for NMEA parser library */
-    // ESP_LOGI(TAG_MQTT, "### MQTT MAIN CLIENT: %s", client->config->uri);
-    nmea_parser_add_handler(nmea_hdl, gps_event_handler, client);
+  send_gps_task();
 }

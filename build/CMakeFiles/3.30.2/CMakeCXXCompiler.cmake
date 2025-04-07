@@ -25,11 +25,11 @@ set(CMAKE_CXX_COMPILER_SYSROOT "/Users/rogeriocassares/.espressif/tools/xtensa-e
 set(CMAKE_COMPILER_SYSROOT "/Users/rogeriocassares/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/../xtensa-esp-elf/usr")
 
 
-set(CMAKE_AR "/Users/rogeriocassares/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-ar")
-set(CMAKE_CXX_COMPILER_AR "/Users/rogeriocassares/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-gcc-ar")
-set(CMAKE_RANLIB "/Users/rogeriocassares/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-ranlib")
-set(CMAKE_CXX_COMPILER_RANLIB "/Users/rogeriocassares/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-gcc-ranlib")
-set(CMAKE_LINKER "/Users/rogeriocassares/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-ld")
+set(CMAKE_AR "/Users/rogeriocassares/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/xtensa-esp32s3-elf-ar")
+set(CMAKE_CXX_COMPILER_AR "/Users/rogeriocassares/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc-ar")
+set(CMAKE_RANLIB "/Users/rogeriocassares/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/xtensa-esp32s3-elf-ranlib")
+set(CMAKE_CXX_COMPILER_RANLIB "/Users/rogeriocassares/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc-ranlib")
+set(CMAKE_LINKER "/Users/rogeriocassares/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/xtensa-esp32s3-elf-ld")
 set(CMAKE_LINKER_LINK "")
 set(CMAKE_LINKER_LLD "")
 set(CMAKE_CXX_COMPILER_LINKER "NOTFOUND")
