@@ -1,5 +1,25 @@
 menu "Example Configuration"
 
+  config IDF_TARGET
+    int "TX GPIO number"
+    default 1 if IDF_TARGET_ESP32
+    default 2 if IDF_TARGET_ESP32S3
+    default 3 if IDF_TARGET_ESP32C6
+    default 0
+    help
+      This option selects the GPIO pin used for the TX signal. Connect the
+      TX signal to your transceiver.
+
+
+  menu "MQTT Configuration"
+
+    config BROKER_URL
+        string "Broker URL"
+        default "mqtt://mqtt.maua.br"
+        help
+            URL of the broker to connect to
+  endmenu
+
   menu "TWAI Configuration"
     config EXAMPLE_TX_GPIO_NUM
       int "TX GPIO number"
