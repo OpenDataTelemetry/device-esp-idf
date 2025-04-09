@@ -163,10 +163,12 @@ static const char *GPS_TASK_TAG = "GPS_TASK";
   sendData(GPS_TASK_TAG, "AT+CGNSSPORTSWITCH=0,1\r\n");
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   sendData(GPS_TASK_TAG, "AT+CGNSSNMEA=1,1,1,1,1,1,0,0,0,0\\r\n");
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-  sendData(GPS_TASK_TAG, "AT+CGNSSTST=1\r\n");
   vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+  sendData(GPS_TASK_TAG, "AT+CGNSSTST=0\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT+CGNSSTST=1\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
 
 
 //   char at[] = "AT\r\n";

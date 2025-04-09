@@ -265,34 +265,6 @@ static void uart_rx_async_task(void *arg)
 }
 /* --------- UART_1 RX_ASYNC_TASK BEGIN ---------*/
 
-/* --------- GPS_EVENT_HANDLER BEGIN ---------*/
-static void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-  gps_t *gps = NULL;
-  switch (event_id)
-  {
-  case GPS_UPDATE:
-    gps = (gps_t *)event_data;
-    /* print information parsed from GPS statements */
-    ESP_LOGI(TAG_GPS, "%d/%d/%d %d:%d:%d => \r\n"
-                      "\t\t\t\t\t\tlatitude   = %.05f°N\r\n"
-                      "\t\t\t\t\t\tlongitude = %.05f°E\r\n"
-                      "\t\t\t\t\t\taltitude   = %.02fm\r\n"
-                      "\t\t\t\t\t\tspeed      = %fm/s",
-             gps->date.year + YEAR_BASE, gps->date.month, gps->date.day,
-             gps->tim.hour + TIME_ZONE, gps->tim.minute, gps->tim.second,
-             gps->latitude, gps->longitude, gps->altitude, gps->speed);
-    break;
-  case GPS_UNKNOWN:
-    /* print unknown statements */
-    ESP_LOGW(TAG_GPS, "Unknown statement:%s", (char *)event_data);
-    break;
-  default:
-    break;
-  }
-}
-/* --------- GPS_EVENT_HANDLER END ---------*/
-
 /* --------- MQTT_EVENT_HANDLER BEGIN ---------*/
 static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
@@ -306,62 +278,62 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
   {
   case MQTT_EVENT_CONNECTED:
     ESP_LOGI(TAG_MQTT, "MQTT_EVENT_CONNECTED");
-    print_user_property(event->property->user_property);
-    esp_mqtt5_client_set_user_property(&publish_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-    esp_mqtt5_client_set_publish_property(client, &publish_property);
-    msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 1);
-    esp_mqtt5_client_delete_user_property(publish_property.user_property);
-    publish_property.user_property = NULL;
-    ESP_LOGI(TAG_MQTT, "sent publish successful, msg_id=%d", msg_id);
+    // print_user_property(event->property->user_property);
+    // esp_mqtt5_client_set_user_property(&publish_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
+    // esp_mqtt5_client_set_publish_property(client, &publish_property);
+    // msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 1);
+    // esp_mqtt5_client_delete_user_property(publish_property.user_property);
+    // publish_property.user_property = NULL;
+    // ESP_LOGI(TAG_MQTT, "sent publish successful, msg_id=%d", msg_id);
 
-    esp_mqtt5_client_set_user_property(&subscribe_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-    esp_mqtt5_client_set_subscribe_property(client, &subscribe_property);
-    msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
-    esp_mqtt5_client_delete_user_property(subscribe_property.user_property);
-    subscribe_property.user_property = NULL;
-    ESP_LOGI(TAG_MQTT, "sent subscribe successful, msg_id=%d", msg_id);
+    // esp_mqtt5_client_set_user_property(&subscribe_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
+    // esp_mqtt5_client_set_subscribe_property(client, &subscribe_property);
+    // msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
+    // esp_mqtt5_client_delete_user_property(subscribe_property.user_property);
+    // subscribe_property.user_property = NULL;
+    // ESP_LOGI(TAG_MQTT, "sent subscribe successful, msg_id=%d", msg_id);
 
-    esp_mqtt5_client_set_user_property(&subscribe1_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-    esp_mqtt5_client_set_subscribe_property(client, &subscribe1_property);
-    msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 2);
-    esp_mqtt5_client_delete_user_property(subscribe1_property.user_property);
-    subscribe1_property.user_property = NULL;
-    ESP_LOGI(TAG_MQTT, "sent subscribe successful, msg_id=%d", msg_id);
+    // esp_mqtt5_client_set_user_property(&subscribe1_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
+    // esp_mqtt5_client_set_subscribe_property(client, &subscribe1_property);
+    // msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 2);
+    // esp_mqtt5_client_delete_user_property(subscribe1_property.user_property);
+    // subscribe1_property.user_property = NULL;
+    // ESP_LOGI(TAG_MQTT, "sent subscribe successful, msg_id=%d", msg_id);
 
-    esp_mqtt5_client_set_user_property(&unsubscribe_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-    esp_mqtt5_client_set_unsubscribe_property(client, &unsubscribe_property);
-    msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos0");
-    ESP_LOGI(TAG_MQTT, "sent unsubscribe successful, msg_id=%d", msg_id);
-    esp_mqtt5_client_delete_user_property(unsubscribe_property.user_property);
-    unsubscribe_property.user_property = NULL;
+    // esp_mqtt5_client_set_user_property(&unsubscribe_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
+    // esp_mqtt5_client_set_unsubscribe_property(client, &unsubscribe_property);
+    // msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos0");
+    // ESP_LOGI(TAG_MQTT, "sent unsubscribe successful, msg_id=%d", msg_id);
+    // esp_mqtt5_client_delete_user_property(unsubscribe_property.user_property);
+    // unsubscribe_property.user_property = NULL;
     break;
   case MQTT_EVENT_DISCONNECTED:
     ESP_LOGI(TAG_MQTT, "MQTT_EVENT_DISCONNECTED");
-    print_user_property(event->property->user_property);
+    // print_user_property(event->property->user_property);
     break;
   case MQTT_EVENT_SUBSCRIBED:
     ESP_LOGI(TAG_MQTT, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-    print_user_property(event->property->user_property);
-    esp_mqtt5_client_set_publish_property(client, &publish_property);
-    msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
-    ESP_LOGI(TAG_MQTT, "sent publish successful, msg_id=%d", msg_id);
+    // print_user_property(event->property->user_property);
+    // esp_mqtt5_client_set_publish_property(client, &publish_property);
+    // msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
+    // ESP_LOGI(TAG_MQTT, "sent publish successful, msg_id=%d", msg_id);
     break;
   case MQTT_EVENT_UNSUBSCRIBED:
     ESP_LOGI(TAG_MQTT, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
-    print_user_property(event->property->user_property);
-    esp_mqtt5_client_set_user_property(&disconnect_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-    esp_mqtt5_client_set_disconnect_property(client, &disconnect_property);
-    esp_mqtt5_client_delete_user_property(disconnect_property.user_property);
-    disconnect_property.user_property = NULL;
-    esp_mqtt_client_disconnect(client);
+    // print_user_property(event->property->user_property);
+    // esp_mqtt5_client_set_user_property(&disconnect_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
+    // esp_mqtt5_client_set_disconnect_property(client, &disconnect_property);
+    // esp_mqtt5_client_delete_user_property(disconnect_property.user_property);
+    // disconnect_property.user_property = NULL;
+    // esp_mqtt_client_disconnect(client);
     break;
   case MQTT_EVENT_PUBLISHED:
     ESP_LOGI(TAG_MQTT, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
-    print_user_property(event->property->user_property);
+    // print_user_property(event->property->user_property);
     break;
   case MQTT_EVENT_DATA:
     ESP_LOGI(TAG_MQTT, "MQTT_EVENT_DATA");
-    print_user_property(event->property->user_property);
+    // print_user_property(event->property->user_property);
     ESP_LOGI(TAG_MQTT, "payload_format_indicator is %d", event->property->payload_format_indicator);
     ESP_LOGI(TAG_MQTT, "response_topic is %.*s", event->property->response_topic_len, event->property->response_topic);
     ESP_LOGI(TAG_MQTT, "correlation_data is %.*s", event->property->correlation_data_len, event->property->correlation_data);
@@ -371,7 +343,7 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
     break;
   case MQTT_EVENT_ERROR:
     ESP_LOGI(TAG_MQTT, "MQTT_EVENT_ERROR");
-    print_user_property(event->property->user_property);
+    // print_user_property(event->property->user_property);
     ESP_LOGI(TAG_MQTT, "MQTT5 return code is %d", event->error_handle->connect_return_code);
     if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT)
     {
@@ -387,6 +359,40 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
   }
 }
 /* --------- MQTT_EVENT_HANDLER END ---------*/
+
+
+/* --------- GPS_EVENT_HANDLER BEGIN ---------*/
+static void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+  gps_t *gps = NULL;
+  esp_mqtt_client_handle_t client = event_handler_arg;
+
+  switch (event_id)
+  {
+  case GPS_UPDATE:
+    gps = (gps_t *)event_data;
+    /* print information parsed from GPS statements */
+    ESP_LOGI(TAG_GPS, "%d/%d/%d %d:%d:%d => \r\n"
+                      "\t\t\t\t\t\tlatitude   = %.05f°N\r\n"
+                      "\t\t\t\t\t\tlongitude = %.05f°E\r\n"
+                      "\t\t\t\t\t\taltitude   = %.02fm\r\n"
+                      "\t\t\t\t\t\tspeed      = %fm/s",
+             gps->date.year + YEAR_BASE, gps->date.month, gps->date.day,
+             gps->tim.hour + TIME_ZONE, gps->tim.minute, gps->tim.second,
+             gps->latitude, gps->longitude, gps->altitude, gps->speed);
+    int msg_id = esp_mqtt_client_publish(client, "OpenDataTelemetry/FSAELive/IC/001/rx", "message", 0, 1, 0);
+
+    break;
+  case GPS_UNKNOWN:
+    /* print unknown statements */
+    ESP_LOGW(TAG_GPS, "Unknown statement:%s", (char *)event_data);
+    break;
+  default:
+    break;
+  }
+}
+/* --------- GPS_EVENT_HANDLER END ---------*/
+
 
 /* --------- MQTT_APP BEGIN ---------*/
 static void mqtt5_app_start(void)
@@ -406,17 +412,17 @@ static void mqtt5_app_start(void)
       .correlation_data_len = 6,
   };
 
-  esp_mqtt_client_config_t mqtt5_cfg = {
-      .broker.address.uri = CONFIG_MQTT_BROKER_URL,
-      .session.protocol_ver = MQTT_PROTOCOL_V_5,
-      .network.disable_auto_reconnect = true,
-      .credentials.username = "123",
-      .credentials.authentication.password = "456",
-      .session.last_will.topic = "/topic/will",
-      .session.last_will.msg = "i will leave",
-      .session.last_will.msg_len = 12,
-      .session.last_will.qos = 1,
-      .session.last_will.retain = true,
+  // esp_mqtt_client_config_t mqtt5_cfg = {
+  //     .broker.address.uri = CONFIG_MQTT_BROKER_URL,
+  //     .session.protocol_ver = MQTT_PROTOCOL_V_5,
+  //     .network.disable_auto_reconnect = true,
+  //     .credentials.username = "public",
+  //     .credentials.authentication.password = "public",
+      // .session.last_will.topic = "/topic/will",
+      // .session.last_will.msg = "i will leave",
+      // .session.last_will.msg_len = 12,
+      // .session.last_will.qos = 1,
+      // .session.last_will.retain = true,
   };
 
   // #if CONFIG_BROKER_URL_FROM_STDIN
@@ -491,6 +497,41 @@ void app_main(void)
   // ESP_LOGI(TAG_TWAI, "Driver uninstalled");
   /* --------- TWAI END ---------*/
 
+  
+
+  /* --------- MQTT BEGIN ---------*/
+  ESP_LOGI(TAG_MQTT, "[APP] Startup..");
+  ESP_LOGI(TAG_MQTT, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
+  ESP_LOGI(TAG_MQTT, "[APP] IDF version: %s", esp_get_idf_version());
+
+  esp_log_level_set("*", ESP_LOG_INFO);
+  esp_log_level_set("mqtt_client", ESP_LOG_VERBOSE);
+  esp_log_level_set("mqtt_example", ESP_LOG_VERBOSE);
+  esp_log_level_set("transport_base", ESP_LOG_VERBOSE);
+  esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
+  esp_log_level_set("transport", ESP_LOG_VERBOSE);
+  esp_log_level_set("outbox", ESP_LOG_VERBOSE);
+
+  ESP_ERROR_CHECK(nvs_flash_init());
+  ESP_ERROR_CHECK(esp_netif_init());
+  ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+  // /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
+  //  * Read "Establishing Wi-Fi or Ethernet Connection" section in
+  //  * examples/protocols/README.md for more information about this function.
+  //  */
+  ESP_ERROR_CHECK(example_connect());
+  
+  esp_mqtt_client_config_t mqtt5_cfg = {
+    .broker.address.uri = CONFIG_MQTT_BROKER_URL,
+    .session.protocol_ver = MQTT_PROTOCOL_V_5,
+    .network.disable_auto_reconnect = true,
+    .credentials.username = "public",
+    .credentials.authentication.password = "public",
+
+  mqtt5_app_start();
+  /* --------- MQTT END ---------*/
+
   /* --------- NMEA BEGIN ---------*/
   /* NMEA parser configuration */
   nmea_parser_config_t config = NMEA_PARSER_CONFIG_DEFAULT();
@@ -503,32 +544,6 @@ void app_main(void)
 
   vTaskDelay(10000 / portTICK_PERIOD_MS);
   /* --------- NMEA END ---------*/
-
-  /* --------- MQTT BEGIN ---------*/
-  // ESP_LOGI(TAG_MQTT, "[APP] Startup..");
-  // ESP_LOGI(TAG_MQTT, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
-  // ESP_LOGI(TAG_MQTT, "[APP] IDF version: %s", esp_get_idf_version());
-
-  // esp_log_level_set("*", ESP_LOG_INFO);
-  // esp_log_level_set("mqtt_client", ESP_LOG_VERBOSE);
-  // esp_log_level_set("mqtt_example", ESP_LOG_VERBOSE);
-  // esp_log_level_set("transport_base", ESP_LOG_VERBOSE);
-  // esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
-  // esp_log_level_set("transport", ESP_LOG_VERBOSE);
-  // esp_log_level_set("outbox", ESP_LOG_VERBOSE);
-
-  // ESP_ERROR_CHECK(nvs_flash_init());
-  // ESP_ERROR_CHECK(esp_netif_init());
-  // ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-  // /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-  //  * Read "Establishing Wi-Fi or Ethernet Connection" section in
-  //  * examples/protocols/README.md for more information about this function.
-  //  */
-  // ESP_ERROR_CHECK(example_connect());
-
-  // mqtt5_app_start();
-  /* --------- MQTT END ---------*/
 
   // xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, RX_TASK_PRIO, NULL, tskNO_AFFINITY);
   // Cleanup
