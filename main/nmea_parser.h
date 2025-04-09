@@ -122,6 +122,7 @@
  typedef struct {
      struct {
          uart_port_t uart_port;        /*!< UART port number */
+         uint32_t tx_pin;              /*!< UART Tx Pin number */
          uint32_t rx_pin;              /*!< UART Rx Pin number */
          uint32_t baud_rate;           /*!< UART baud rate */
          uart_word_length_t data_bits; /*!< UART data bits length */
@@ -145,8 +146,9 @@
      {                                             \
          .uart = {                                 \
              .uart_port = UART_NUM_1,              \
+             .tx_pin = CONFIG_NMEA_PARSER_UART_TXD,\
              .rx_pin = CONFIG_NMEA_PARSER_UART_RXD,\
-             .baud_rate = 115200,                    \
+             .baud_rate = CONFIG_NMEA_PARSER_UART_BAUD_RATE,                    \
              .data_bits = UART_DATA_8_BITS,        \
              .parity = UART_PARITY_DISABLE,        \
              .stop_bits = UART_STOP_BITS_1,        \

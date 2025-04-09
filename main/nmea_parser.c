@@ -53,13 +53,50 @@ typedef struct
   QueueHandle_t event_queue;                     /*!< UART event queue handle */
 } esp_gps_t;
 
+
+int sendData(const char *logName, const char *data)
+{
+  const int len = strlen(data);
+  const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
+  ESP_LOGI(logName, "Wrote %d bytes", txBytes);
+  return txBytes;
+}
+// void send_gps_task(void)
+// {
+//   static const char *GPS_TASK_TAG = "GPS_TASK";
+//   sendData(GPS_TASK_TAG, "AT\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+//   sendData(GPS_TASK_TAG, "AT+CGNSSPWR=1\r\n\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT+CGPSHOT\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+  
+//   sendData(GPS_TASK_TAG, "AT+CGPSINFO=1\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT+CGNSSINFO=1\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT+CGNSSPORTSWITCH=0,1\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT+CGNSSNMEA=1,1,1,1,1,1,0,0,0,0\\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+//   sendData(GPS_TASK_TAG, "AT+CGNSSTST=1\r\n");
+//   vTaskDelay(30000 / portTICK_PERIOD_MS);
+// }
+
+
 static void gps_configure(void *arg)
 {
   esp_gps_t *esp_gps = (esp_gps_t *)arg;
   uart_event_t event;
   int len = 0;
 
-#if IDF_TARGET_ESP32 || IDF_TARGET_ESP32C6
+#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C6
 
   char at_cgnsspwr2[] = "$PAIR002*38\r\n";
   len = uart_write_bytes(esp_gps->uart_port, at_cgnsspwr2, sizeof(at_cgnsspwr2));
@@ -105,13 +142,38 @@ static void gps_configure(void *arg)
 
 #endif
 
-#if IDF_TARGET_ESP32S3
+#if CONFIG_IDF_TARGET_ESP32S3 
+static const char *GPS_TASK_TAG = "GPS_TASK";
+  sendData(GPS_TASK_TAG, "AT\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-  char at[] = "AT\r\n";
-  // int read_len = uart_read_bytes(esp_gps->uart_port, esp_gps->buffer, READ_BUF_SIZE -1, 100 / portTICK_PERIOD_MS);
-  len = uart_write_bytes(esp_gps->uart_port, at, sizeof(at));
-  ESP_LOGI(GPS_TAG, "SEND AT");
+  sendData(GPS_TASK_TAG, "AT+CGNSSPWR=1\r\n\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT+CGPSHOT\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  
+  sendData(GPS_TASK_TAG, "AT+CGPSINFO=1\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT+CGNSSINFO=1\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT+CGNSSPORTSWITCH=0,1\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  sendData(GPS_TASK_TAG, "AT+CGNSSNMEA=1,1,1,1,1,1,0,0,0,0\\r\n");
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+  sendData(GPS_TASK_TAG, "AT+CGNSSTST=1\r\n");
   vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+
+//   char at[] = "AT\r\n";
+//   // int read_len = uart_read_bytes(esp_gps->uart_port, esp_gps->buffer, READ_BUF_SIZE -1, 100 / portTICK_PERIOD_MS);
+//   len = uart_write_bytes(esp_gps->uart_port, at, sizeof(at));
+//   ESP_LOGI(GPS_TAG, "SEND AT");
+//   vTaskDelay(10000 / portTICK_PERIOD_MS);
 
 // char at_cgnsspwr[] = "AT+CGNSSPWR=1\r\n";
 // len = uart_write_bytes(esp_gps->uart_port, at_cgnsspwr, sizeof(at_cgnsspwr));
@@ -782,7 +844,7 @@ static void nmea_parser_task_entry(void *arg)
     /* Drive the event loop */
     esp_event_loop_run(esp_gps->event_loop_hdl, pdMS_TO_TICKS(50));
   }
-  vTaskDelete(NULL);
+  // vTaskDelete(NULL); // RC-EDIT
 }
 
 /**
@@ -846,7 +908,7 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
     ESP_LOGE(GPS_TAG, "config uart parameter failed");
     goto err_uart_config;
   }
-  if (uart_set_pin(esp_gps->uart_port, UART_PIN_NO_CHANGE, config->uart.rx_pin,
+  if (uart_set_pin(esp_gps->uart_port, config->uart.tx_pin, config->uart.rx_pin,
                    UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE) != ESP_OK)
   {
     ESP_LOGE(GPS_TAG, "config uart gpio failed");
@@ -866,6 +928,10 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
     ESP_LOGE(GPS_TAG, "create event loop faild");
     goto err_eloop;
   }
+
+  //RC-EDIT
+  xTaskCreate(gps_configure, "gps_configure", CONFIG_NMEA_PARSER_TASK_STACK_SIZE, esp_gps, CONFIG_NMEA_PARSER_TASK_PRIORITY, NULL);
+
   /* Create NMEA Parser task */
   BaseType_t err = xTaskCreate(
       nmea_parser_task_entry,

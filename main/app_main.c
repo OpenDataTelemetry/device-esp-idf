@@ -17,7 +17,7 @@
 #include "esp_log.h"
 #include "nmea_parser.h"
 
-static const char *TAG_GPS = "gps_demo";
+static const char *TAG_GPS = "app_main_gps";
 
 #define TIME_ZONE (0)    // Beijing Time
 #define YEAR_BASE (2000) // date in GPS starts from 2000
@@ -33,7 +33,6 @@ static const int RX_BUF_SIZE = 2048;
 #define TXD_PIN (GPIO_NUM_18)
 #define RXD_PIN (GPIO_NUM_17)
 
-
 /*MQTT*/
 #include <stdint.h>
 #include <stddef.h>
@@ -44,13 +43,12 @@ static const int RX_BUF_SIZE = 2048;
 #include "protocol_examples_common.h"
 #include "mqtt_client.h"
 
-
 /* --------------------- Definitions and static variables ------------------ */
-/*CAN*/
+/*TWAI*/
 #define NO_OF_ITERS 3
 #define RX_TASK_PRIO 9
-#define TX_GPIO_NUM CONFIG_EXAMPLE_TX_GPIO_NUM
-#define RX_GPIO_NUM CONFIG_EXAMPLE_RX_GPIO_NUM
+#define TX_GPIO_NUM CONFIG_TWAI_TX_GPIO_NUM
+#define RX_GPIO_NUM CONFIG_TWAI_RX_GPIO_NUM
 #define TAG_TWAI "TWAI Listen Only"
 
 #define ID_MASTER_STOP_CMD 0x0A0
@@ -60,24 +58,22 @@ static const int RX_BUF_SIZE = 2048;
 #define ID_SLAVE_DATA 0x0B1
 #define ID_SLAVE_PING_RESP 0x0B2
 
-
-
-static const twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
-static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_1MBITS();
-// Set TX queue length to 0 due to listen only mode
-static const twai_general_config_t g_config = {.mode = TWAI_MODE_LISTEN_ONLY,
-                                               .tx_io = TX_GPIO_NUM,
-                                               .rx_io = RX_GPIO_NUM,
-                                               .clkout_io = TWAI_IO_UNUSED,
-                                               .bus_off_io = TWAI_IO_UNUSED,
-                                               .tx_queue_len = 0,
-                                               .rx_queue_len = 5,
-                                               .alerts_enabled = TWAI_ALERT_NONE,
-                                               .clkout_divider = 0};
+// static const twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+// static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_1MBITS();
+// // Set TX queue length to 0 due to listen only mode
+// static const twai_general_config_t g_config = {.mode = TWAI_MODE_LISTEN_ONLY,
+//                                                .tx_io = TX_GPIO_NUM,
+//                                                .rx_io = RX_GPIO_NUM,
+//                                                .clkout_io = TWAI_IO_UNUSED,
+//                                                .bus_off_io = TWAI_IO_UNUSED,
+//                                                .tx_queue_len = 0,
+//                                                .rx_queue_len = 5,
+//                                                .alerts_enabled = TWAI_ALERT_NONE,
+//                                                .clkout_divider = 0};
 static SemaphoreHandle_t rx_sem;
 
 /*MQTT*/
-static const char *TAG_MQTT = "mqtt5_example";
+static const char *TAG_MQTT = "app_main_mqtt5";
 
 static void log_error_if_nonzero(const char *message, int error_code)
 {
@@ -154,6 +150,8 @@ static void print_user_property(mqtt5_user_property_handle_t user_property)
 
 /* --------------------------- Tasks and Functions -------------------------- */
 
+/* --------- TWAI TASK BEGIN ---------*/
+
 static void twai_receive_task(void *arg)
 {
   xSemaphoreTake(rx_sem, portMAX_DELAY);
@@ -174,15 +172,19 @@ static void twai_receive_task(void *arg)
   xSemaphoreGive(rx_sem);
   vTaskDelete(NULL);
 }
+/* --------- TWAI TASK END ---------*/
 
-int sendData(const char *logName, const char *data)
-{
-  const int len = strlen(data);
-  const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
-  ESP_LOGI(logName, "Wrote %d bytes", txBytes);
-  return txBytes;
-}
+/* --------- UART_1 SEND_DATA BEGIN ---------*/
+// int sendData(const char *logName, const char *data)
+// {
+//   const int len = strlen(data);
+//   const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
+//   ESP_LOGI(logName, "Wrote %d bytes", txBytes);
+//   return txBytes;
+// }
+/* --------- UART_1 SEND_DATA END ---------*/
 
+/* --------- UART_1 INIT BEGIN ---------*/
 void init(void)
 {
   const uart_config_t uart_config = {
@@ -198,34 +200,38 @@ void init(void)
   uart_param_config(UART_NUM_1, &uart_config);
   uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 }
+/* --------- UART_1 INIT END ---------*/
 
-void send_gps_task(void)
-{
-  static const char *GPS_TASK_TAG = "GPS_TASK";
-  sendData(GPS_TASK_TAG, "AT\r\n");
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-  sendData(GPS_TASK_TAG, "AT\r\n");
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-  sendData(GPS_TASK_TAG, "AT\r\n");
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
+/* --------- UART_1 CONFIGURE GPS BEGIN ---------*/
+// void send_gps_task1(void)
+// {
+//   static const char *GPS_TASK_TAG = "GPS_TASK";
+//   sendData(GPS_TASK_TAG, "AT\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-  sendData(GPS_TASK_TAG, "AT+CGNSSPWR=1\r\n\r\n");
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-  sendData(GPS_TASK_TAG, "AT+CGPSHOT\r\n");
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-  sendData(GPS_TASK_TAG, "AT+CGNSSTST=1\r\n");
-  vTaskDelay(10000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT+CGNSSPWR=1\r\n\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT+CGPSHOT\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT+CGNSSTST=1\r\n");
+//   vTaskDelay(10000 / portTICK_PERIOD_MS);
 
-  sendData(GPS_TASK_TAG, "AT+CGPSINFO=1\r\n");
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-  sendData(GPS_TASK_TAG, "AT+CGNSSINFO=1\r\n");
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-  sendData(GPS_TASK_TAG, "AT+CGNSSPORTSWITCH=0,1\r\n");
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-  sendData(GPS_TASK_TAG, "AT+CGNSSNMEA=1,1,1,1,1,1,0,0,0,0\\r\n");
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-}
+//   sendData(GPS_TASK_TAG, "AT+CGPSINFO=1\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT+CGNSSINFO=1\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT+CGNSSPORTSWITCH=0,1\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   sendData(GPS_TASK_TAG, "AT+CGNSSNMEA=1,1,1,1,1,1,0,0,0,0\\r\n");
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+// }
+/* --------- UART_1 CONFIGURE GPS BEGIN ---------*/
 
+/* --------- UART_1 TX_ASYNC_TASK BEGIN ---------*/
 // static void uart_tx_async_task(void *arg)
 // {
 //   static const char *TX_TASK_TAG = "TX_TASK";
@@ -234,11 +240,13 @@ void send_gps_task(void)
 //   {
 //     sendData(TX_TASK_TAG, "AT\r\n");
 //     vTaskDelay(1000 / portTICK_PERIOD_MS);
-
 //   }
 // }
+/* --------- UART_1 TX_ASYNC_TASK END ---------*/
 
+/* --------- UART_1 TX_ASYNC_TASK BEGIN ---------*/
 static void uart_rx_async_task(void *arg)
+
 {
   static const char *RX_TASK_TAG = "RX_TASK";
   esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
@@ -255,7 +263,9 @@ static void uart_rx_async_task(void *arg)
   }
   free(data);
 }
+/* --------- UART_1 RX_ASYNC_TASK BEGIN ---------*/
 
+/* --------- GPS_EVENT_HANDLER BEGIN ---------*/
 static void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
   gps_t *gps = NULL;
@@ -265,10 +275,10 @@ static void gps_event_handler(void *event_handler_arg, esp_event_base_t event_ba
     gps = (gps_t *)event_data;
     /* print information parsed from GPS statements */
     ESP_LOGI(TAG_GPS, "%d/%d/%d %d:%d:%d => \r\n"
-                  "\t\t\t\t\t\tlatitude   = %.05f°N\r\n"
-                  "\t\t\t\t\t\tlongitude = %.05f°E\r\n"
-                  "\t\t\t\t\t\taltitude   = %.02fm\r\n"
-                  "\t\t\t\t\t\tspeed      = %fm/s",
+                      "\t\t\t\t\t\tlatitude   = %.05f°N\r\n"
+                      "\t\t\t\t\t\tlongitude = %.05f°E\r\n"
+                      "\t\t\t\t\t\taltitude   = %.02fm\r\n"
+                      "\t\t\t\t\t\tspeed      = %fm/s",
              gps->date.year + YEAR_BASE, gps->date.month, gps->date.day,
              gps->tim.hour + TIME_ZONE, gps->tim.minute, gps->tim.second,
              gps->latitude, gps->longitude, gps->altitude, gps->speed);
@@ -281,7 +291,9 @@ static void gps_event_handler(void *event_handler_arg, esp_event_base_t event_ba
     break;
   }
 }
+/* --------- GPS_EVENT_HANDLER END ---------*/
 
+/* --------- MQTT_EVENT_HANDLER BEGIN ---------*/
 static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
   ESP_LOGD(TAG_MQTT, "Event dispatched from event loop base=%s, event_id=%" PRIi32, base, event_id);
@@ -374,7 +386,9 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
     break;
   }
 }
+/* --------- MQTT_EVENT_HANDLER END ---------*/
 
+/* --------- MQTT_APP BEGIN ---------*/
 static void mqtt5_app_start(void)
 {
   esp_mqtt5_connection_property_config_t connect_property = {
@@ -393,7 +407,7 @@ static void mqtt5_app_start(void)
   };
 
   esp_mqtt_client_config_t mqtt5_cfg = {
-      .broker.address.uri = CONFIG_BROKER_URL,
+      .broker.address.uri = CONFIG_MQTT_BROKER_URL,
       .session.protocol_ver = MQTT_PROTOCOL_V_5,
       .network.disable_auto_reconnect = true,
       .credentials.username = "123",
@@ -447,93 +461,80 @@ static void mqtt5_app_start(void)
   esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
   esp_mqtt_client_start(client);
 }
+/* --------- MQTT_APP END ---------*/
 
 void app_main(void)
 {
-  // const char *var_name = "IDF_TARGET_ESP32S3";
-
-  //   // Use getenv to get the value of the environment variable
-  //   const char *value = getenv(var_name);
-
-  //   // Check if the environment variable was found
-  //   if (value != NULL) {
-  //       printf("The value of %s is: %s\n", var_name, value);
-  //   } else {
-  //       printf("The environment variable %s is not set.\n", var_name);
-  //   }
-
   // init();
   // xTaskCreate(uart_rx_async_task, "uart_rx_task", 2048 * 2, NULL, configMAX_PRIORITIES - 1, NULL);
-  // xTaskCreate(tx_task, "uart_tx_async_task", 2048 * 2, NULL, configMAX_PRIORITIES - 2, NULL);
+  // xTaskCreate(uart_tx_async_task, "uart_tx_async_task", 2048 * 2, NULL, configMAX_PRIORITIES - 2, NULL);
 
   // /*CAN*/
-  rx_sem = xSemaphoreCreateBinary();
-  xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, RX_TASK_PRIO, NULL, tskNO_AFFINITY);
+  // /* --------- TWAI BEGIN ---------*/
+  // rx_sem = xSemaphoreCreateBinary();
+  // xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, RX_TASK_PRIO, NULL, tskNO_AFFINITY);
 
-  // Install and start TWAI driver
-  ESP_ERROR_CHECK(twai_driver_install(&g_config, &t_config, &f_config));
-  ESP_LOGI(TAG_TWAI, "Driver installed");
-  ESP_ERROR_CHECK(twai_start());
-  ESP_LOGI(TAG_TWAI, "Driver started");
+  // // Install and start TWAI driver
+  // ESP_ERROR_CHECK(twai_driver_install(&g_config, &t_config, &f_config));
+  // ESP_LOGI(TAG_TWAI, "Driver installed");
+  // ESP_ERROR_CHECK(twai_start());
+  // ESP_LOGI(TAG_TWAI, "Driver started");
 
-  xSemaphoreGive(rx_sem); // Start RX task
-  vTaskDelay(pdMS_TO_TICKS(100));
-  xSemaphoreTake(rx_sem, portMAX_DELAY); // Wait for RX task to complete
+  // xSemaphoreGive(rx_sem); // Start RX task
+  // vTaskDelay(pdMS_TO_TICKS(100));
+  // xSemaphoreTake(rx_sem, portMAX_DELAY); // Wait for RX task to complete
 
-  // Stop and uninstall TWAI driver
-  ESP_ERROR_CHECK(twai_stop());
-  ESP_LOGI(TAG_TWAI, "Driver stopped");
-  ESP_ERROR_CHECK(twai_driver_uninstall());
-  ESP_LOGI(TAG_TWAI, "Driver uninstalled");
+  // // Stop and uninstall TWAI driver
+  // ESP_ERROR_CHECK(twai_stop());
+  // ESP_LOGI(TAG_TWAI, "Driver stopped");
+  // ESP_ERROR_CHECK(twai_driver_uninstall());
+  // ESP_LOGI(TAG_TWAI, "Driver uninstalled");
+  /* --------- TWAI END ---------*/
 
-  
-
-  
-
-  // NMEA
+  /* --------- NMEA BEGIN ---------*/
   /* NMEA parser configuration */
   nmea_parser_config_t config = NMEA_PARSER_CONFIG_DEFAULT();
   /* init NMEA parser library */
   nmea_parser_handle_t nmea_hdl = nmea_parser_init(&config);
   // GPS INIT
-  send_gps_task();
+  // send_gps_task();
   /* register event handler for NMEA parser library */
   nmea_parser_add_handler(nmea_hdl, gps_event_handler, NULL);
 
   vTaskDelay(10000 / portTICK_PERIOD_MS);
+  /* --------- NMEA END ---------*/
 
-  
+  /* --------- MQTT BEGIN ---------*/
+  // ESP_LOGI(TAG_MQTT, "[APP] Startup..");
+  // ESP_LOGI(TAG_MQTT, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
+  // ESP_LOGI(TAG_MQTT, "[APP] IDF version: %s", esp_get_idf_version());
 
-  // MQTT
-  ESP_LOGI(TAG_MQTT, "[APP] Startup..");
-  ESP_LOGI(TAG_MQTT, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
-  ESP_LOGI(TAG_MQTT, "[APP] IDF version: %s", esp_get_idf_version());
+  // esp_log_level_set("*", ESP_LOG_INFO);
+  // esp_log_level_set("mqtt_client", ESP_LOG_VERBOSE);
+  // esp_log_level_set("mqtt_example", ESP_LOG_VERBOSE);
+  // esp_log_level_set("transport_base", ESP_LOG_VERBOSE);
+  // esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
+  // esp_log_level_set("transport", ESP_LOG_VERBOSE);
+  // esp_log_level_set("outbox", ESP_LOG_VERBOSE);
 
-  esp_log_level_set("*", ESP_LOG_INFO);
-  esp_log_level_set("mqtt_client", ESP_LOG_VERBOSE);
-  esp_log_level_set("mqtt_example", ESP_LOG_VERBOSE);
-  esp_log_level_set("transport_base", ESP_LOG_VERBOSE);
-  esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
-  esp_log_level_set("transport", ESP_LOG_VERBOSE);
-  esp_log_level_set("outbox", ESP_LOG_VERBOSE);
+  // ESP_ERROR_CHECK(nvs_flash_init());
+  // ESP_ERROR_CHECK(esp_netif_init());
+  // ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-  ESP_ERROR_CHECK(nvs_flash_init());
-  ESP_ERROR_CHECK(esp_netif_init());
-  ESP_ERROR_CHECK(esp_event_loop_create_default());
+  // /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
+  //  * Read "Establishing Wi-Fi or Ethernet Connection" section in
+  //  * examples/protocols/README.md for more information about this function.
+  //  */
+  // ESP_ERROR_CHECK(example_connect());
 
-  /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-   * Read "Establishing Wi-Fi or Ethernet Connection" section in
-   * examples/protocols/README.md for more information about this function.
-   */
-  ESP_ERROR_CHECK(example_connect());
+  // mqtt5_app_start();
+  /* --------- MQTT END ---------*/
 
-  mqtt5_app_start();
-
-// xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, RX_TASK_PRIO, NULL, tskNO_AFFINITY);
+  // xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, RX_TASK_PRIO, NULL, tskNO_AFFINITY);
   // Cleanup
-  vSemaphoreDelete(rx_sem);
+  // vSemaphoreDelete(rx_sem);
   /* unregister event handler */
-  nmea_parser_remove_handler(nmea_hdl, gps_event_handler);
+  // nmea_parser_remove_handler(nmea_hdl, gps_event_handler);
   /* deinit NMEA parser library */
-  nmea_parser_deinit(nmea_hdl);
+  // nmea_parser_deinit(nmea_hdl);
 }

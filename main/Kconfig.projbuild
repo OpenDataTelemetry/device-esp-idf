@@ -1,28 +1,34 @@
-menu "Example Configuration"
+menu "Application Configuration"
 
-  config IDF_TARGET
-    int "TX GPIO number"
-    default 1 if IDF_TARGET_ESP32
-    default 2 if IDF_TARGET_ESP32S3
-    default 3 if IDF_TARGET_ESP32C6
-    default 0
-    help
-      This option selects the GPIO pin used for the TX signal. Connect the
-      TX signal to your transceiver.
+
+  # menu "IDF Configuration"
+  #   choice IDF_TARGET
+  #     prompt "Bootloader optimization Level"
+  #     default IDF_TARGET_ESP32
+  #     help
+  #         If  
+  #     config IDF_TARGET_ESP32
+  #         bool "IDF_TARGET_ESP32"
+  #     config IDF_TARGET_ESP32S3
+  #         bool "IDF_TARGET_ESP32S3"
+  #       config IDF_TARGET_ESP32C6
+  #         bool "IDF_TARGET_ESP32C6"
+  #   endchoice
+  # endmenu
 
 
   menu "MQTT Configuration"
 
-    config BROKER_URL
-        string "Broker URL"
+    config MQTT_BROKER_URL
+        string "MQTT Broker URL"
         default "mqtt://mqtt.maua.br"
         help
             URL of the broker to connect to
   endmenu
 
   menu "TWAI Configuration"
-    config EXAMPLE_TX_GPIO_NUM
-      int "TX GPIO number"
+    config TWAI_TX_GPIO_NUM
+      int "TWAI TX GPIO number"
       default 21 if IDF_TARGET_ESP32
       default 1 if IDF_TARGET_ESP32S3
       default 0 if IDF_TARGET_ESP32C6
@@ -31,8 +37,8 @@ menu "Example Configuration"
         This option selects the GPIO pin used for the TX signal. Connect the
         TX signal to your transceiver.
 
-    config EXAMPLE_RX_GPIO_NUM
-      int "RX GPIO number"
+    config TWAI_RX_GPIO_NUM
+      int "TWAI RX GPIO number"
       default 22 if IDF_TARGET_ESP32
       default 41 if IDF_TARGET_ESP32S3
       default 1 if IDF_TARGET_ESP32C6
@@ -43,13 +49,31 @@ menu "Example Configuration"
   endmenu
 
   # nmea
-  menu "UART_1 Modem"
+  menu "NMEA Modem"
     orsource "$IDF_PATH/examples/common_components/env_caps/$IDF_TARGET/Kconfig.env_caps"
 
-    config NMEA_PARSER_UART_RXD
-      int "UART RXD pin number"
+    
+
+    config NMEA_PARSER_UART_BAUD_RATE
+      int "NMEA UART Baud Rater"
+      default 115200
+      help
+        BaudRate for UART. See UART documentation for more information
+        about available pin numbers for UART.
+
+
+    config NMEA_PARSER_UART_TXD
+      int "NMEA UART TXD pin number"
       range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
-      default 5
+      default 18
+      help
+        GPIO number for UART RX pin. See UART documentation for more information
+        about available pin numbers for UART.
+
+    config NMEA_PARSER_UART_RXD
+      int "NMEA UART RXD pin number"
+      range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
+      default 17
       help
         GPIO number for UART RX pin. See UART documentation for more information
         about available pin numbers for UART.
