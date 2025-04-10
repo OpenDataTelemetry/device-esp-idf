@@ -24,6 +24,7 @@ static const char *TAG_MQTT = "app_main_mqtt5";
 #include "freertos/semphr.h"
 #include "esp_err.h"
 #include "driver/twai.h"
+#include "twai.h"
 
 /*UART ASYNC*/
 static const int RX_BUF_SIZE = 2048;
@@ -70,7 +71,7 @@ bool mqttConnected = 0;
 //                                                .rx_queue_len = 5,
 //                                                .alerts_enabled = TWAI_ALERT_NONE,
 //                                                .clkout_divider = 0};
-static SemaphoreHandle_t rx_sem;
+// static SemaphoreHandle_t rx_sem;
 
 /*MQTT*/
 
@@ -383,6 +384,44 @@ static void gps_event_handler(void *handler_args, esp_event_base_t event_base, i
     break;
   }
 }
+
+/* --------- TWAI_EVENT_HANDLER BEGIN ---------*/
+static void twai_event_handler(void *handler_args, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+  gps_t *twai = NULL;
+  esp_mqtt_client_handle_t esp_mqtt_client = handler_args;
+  ESP_LOGI(TAG_MQTT, "############## MQTT GPS CLIENT: %p", esp_mqtt_client);
+
+  switch (event_id)
+  {
+  case TWAI_UPDATE:
+  twai = (twai_t *)event_data;
+    /* print information parsed from GPS statements */
+    // ESP_LOGI(TAG_GPS, "%d/%d/%d %d:%d:%d => \r\n"
+    //                   "\t\t\t\t\t\tlatitude   = %.05f°N\r\n"
+    //                   "\t\t\t\t\t\tlongitude = %.05f°E\r\n"
+    //                   "\t\t\t\t\t\taltitude   = %.02fm\r\n"
+    //                   "\t\t\t\t\t\tspeed      = %fm/s",
+    //          gps->date.year + YEAR_BASE, gps->date.month, gps->date.day,
+    //          gps->tim.hour + TIME_ZONE, gps->tim.minute, gps->tim.second,
+    //          gps->latitude, gps->longitude, gps->altitude, gps->speed);
+
+    if (esp_mqtt_client)
+    {
+      printf("MQTT CONNECTED?: %d", mqttConnected);
+      int msg_id = esp_mqtt_client_publish(esp_mqtt_client, "OpenDataTelemetry/FSAELive/IC/001/rx", "{\"key\":\"twai\"}", 0, 1, 0);
+    }
+
+    break;
+  case GPS_UNKNOWN:
+    /* print unknown statements */
+    ESP_LOGW(TAG_GPS, "Unknown statement:%s", (char *)event_data);
+    break;
+  default:
+    break;
+  }
+}
+/* --------- GPS_EVENT_HANDLER END ---------*/
 /* --------- GPS_EVENT_HANDLER END ---------*/
 
 /* --------- MQTT_APP BEGIN ---------*/
@@ -405,6 +444,28 @@ void app_main(void)
   ESP_ERROR_CHECK(nvs_flash_init());
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+  /* --------- MQTT BEGIN ---------*/
+
+  // mqtt5_app_start();
+  esp_mqtt5_connection_property_config_t connect_property = ESP_MQTT5_CONNECTION_PROPERTY_CONFIG();
+  esp_mqtt_client_config_t esp_mqtt_client_config = ESP_MQTT_CLIENT_CONFIG_DEFAULT();
+  esp_mqtt_client_handle_t esp_mqtt_client = esp_mqtt_client_init(&esp_mqtt_client_config);
+  esp_mqtt5_client_set_user_property(&connect_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
+  esp_mqtt5_client_set_user_property(&connect_property.will_user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
+  esp_mqtt5_client_set_connect_property(esp_mqtt_client, &connect_property);
+
+  /* If you call esp_mqtt5_client_set_user_property to set user properties, DO NOT forget to delete them.
+   * esp_mqtt5_client_set_connect_property will malloc buffer to store the user_property and you can delete it after
+   */
+  // esp_mqtt5_client_delete_user_property(connect_property.user_property);
+  // esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
+
+  /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
+  esp_mqtt_client_register_event(esp_mqtt_client, ESP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
+  esp_mqtt_client_start(esp_mqtt_client);
+  /* --------- MQTT END ---------*/
+
 
 
   // init();
@@ -431,35 +492,19 @@ void app_main(void)
   // ESP_LOGI(TAG_TWAI, "Driver stopped");
   // ESP_ERROR_CHECK(twai_driver_uninstall());
   // ESP_LOGI(TAG_TWAI, "Driver uninstalled");
+
+  twai_config_t twai_config = TWAI_GENERAL_CONFIG();
+  twai_handle_t twai = twai_init(&twai_config);
+  twai_register_event(twai, ESP_EVENT_ANY_ID, gps_event_handler, esp_mqtt_client);
   /* --------- TWAI END ---------*/
   
 
-  /* --------- MQTT BEGIN ---------*/
-
-  // mqtt5_app_start();
-  esp_mqtt5_connection_property_config_t connect_property = ESP_MQTT5_CONNECTION_PROPERTY_CONFIG();
-  esp_mqtt_client_config_t esp_mqtt_client_config = ESP_MQTT_CLIENT_CONFIG_DEFAULT();
-  esp_mqtt_client_handle_t esp_mqtt_client = esp_mqtt_client_init(&esp_mqtt_client_config);
-  esp_mqtt5_client_set_user_property(&connect_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-  esp_mqtt5_client_set_user_property(&connect_property.will_user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-  esp_mqtt5_client_set_connect_property(esp_mqtt_client, &connect_property);
-
-  /* If you call esp_mqtt5_client_set_user_property to set user properties, DO NOT forget to delete them.
-   * esp_mqtt5_client_set_connect_property will malloc buffer to store the user_property and you can delete it after
-   */
-  // esp_mqtt5_client_delete_user_property(connect_property.user_property);
-  // esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
-
-  /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
-  esp_mqtt_client_register_event(esp_mqtt_client, ESP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
-  esp_mqtt_client_start(esp_mqtt_client);
-  /* --------- MQTT END ---------*/
-
+  
   /* --------- UART_1 NMEA BEGIN ---------*/
   // nmea_app_start();
   nmea_parser_config_t nmea_parser_config = NMEA_PARSER_CONFIG_DEFAULT();
-  nmea_parser_handle_t nmea_hdl = nmea_parser_init(&nmea_parser_config);
-  nmea_parser_register_event(nmea_hdl, ESP_EVENT_ANY_ID, gps_event_handler, esp_mqtt_client);
+  nmea_parser_handle_t nmea_parser = nmea_parser_init(&nmea_parser_config);
+  nmea_parser_register_event(nmea_parser, ESP_EVENT_ANY_ID, gps_event_handler, esp_mqtt_client);
 
   // vTaskDelay(10000 / portTICK_PERIOD_MS);
   /* --------- UART_1 NMEA END ---------*/
