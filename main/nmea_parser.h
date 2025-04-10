@@ -18,6 +18,20 @@
  #define GPS_MAX_SATELLITES_IN_USE (12)
  #define GPS_MAX_SATELLITES_IN_VIEW (16)
  
+
+ /**
+ * @brief *MQTT* event types.
+ *
+ * User event handler receives context data in `esp_mqtt_event_t` structure with
+ *  - client - *MQTT* client handle
+ *  - various other data depending on event type
+ *
+ */
+typedef enum nmea_parser_event_id_t {
+  NMEA_PARSER_EVENT_ANY = -1,
+
+} nmea_parser_event_id_t;
+
  /**
   * @brief Declare of NMEA Parser Event base
   *
@@ -193,7 +207,7 @@
   *  - ESP_ERR_INVALIG_ARG: Invalid combination of event base and event id
   *  - Others: Fail
   */
- esp_err_t nmea_parser_add_handler(nmea_parser_handle_t nmea_hdl, esp_event_handler_t event_handler, void *handler_args);
+ esp_err_t nmea_parser_register_event(nmea_parser_handle_t nmea_hdl, nmea_parser_event_id_t event, esp_event_handler_t event_handler, void *handler_args);
  
  /**
   * @brief Remove user defined handler for NMEA parser

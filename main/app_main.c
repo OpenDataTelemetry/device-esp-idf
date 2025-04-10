@@ -10,14 +10,11 @@
 #include <stdlib.h>
 
 /*NMEA*/
-#include <stdio.h>
-#include <stdlib.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_log.h"
 #include "nmea_parser.h"
 
+static const char *TAG_APP = "app_main";
 static const char *TAG_GPS = "app_main_gps";
+static const char *TAG_MQTT = "app_main_mqtt5";
 
 #define TIME_ZONE (0)    // Beijing Time
 #define YEAR_BASE (2000) // date in GPS starts from 2000
@@ -42,6 +39,7 @@ static const int RX_BUF_SIZE = 2048;
 #include "esp_netif.h"
 #include "protocol_examples_common.h"
 #include "mqtt_client.h"
+#include "esp_mqtt_handle.h"
 
 /* --------------------- Definitions and static variables ------------------ */
 /*TWAI*/
@@ -58,6 +56,8 @@ static const int RX_BUF_SIZE = 2048;
 #define ID_SLAVE_DATA 0x0B1
 #define ID_SLAVE_PING_RESP 0x0B2
 
+bool mqttConnected = 0;
+
 // static const twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 // static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_1MBITS();
 // // Set TX queue length to 0 due to listen only mode
@@ -73,7 +73,6 @@ static const int RX_BUF_SIZE = 2048;
 static SemaphoreHandle_t rx_sem;
 
 /*MQTT*/
-static const char *TAG_MQTT = "app_main_mqtt5";
 
 static void log_error_if_nonzero(const char *message, int error_code)
 {
@@ -83,47 +82,14 @@ static void log_error_if_nonzero(const char *message, int error_code)
   }
 }
 
-static esp_mqtt5_user_property_item_t user_property_arr[] = {
-    {"board", "esp32"},
-    {"u", "user"},
-    {"p", "password"}};
+//
+static esp_mqtt5_user_property_item_t user_property_arr[] = ESP_MQTT5_USER_PROPERTY_ITEM();
 
-#define USE_PROPERTY_ARR_SIZE sizeof(user_property_arr) / sizeof(esp_mqtt5_user_property_item_t)
-
-static esp_mqtt5_publish_property_config_t publish_property = {
-    .payload_format_indicator = 1,
-    .message_expiry_interval = 1000,
-    .topic_alias = 0,
-    .response_topic = "/topic/test/response",
-    .correlation_data = "123456",
-    .correlation_data_len = 6,
-};
-
-static esp_mqtt5_subscribe_property_config_t subscribe_property = {
-    .subscribe_id = 25555,
-    .no_local_flag = false,
-    .retain_as_published_flag = false,
-    .retain_handle = 0,
-    .is_share_subscribe = true,
-    .share_name = "group1",
-};
-
-static esp_mqtt5_subscribe_property_config_t subscribe1_property = {
-    .subscribe_id = 25555,
-    .no_local_flag = true,
-    .retain_as_published_flag = false,
-    .retain_handle = 0,
-};
-
-static esp_mqtt5_unsubscribe_property_config_t unsubscribe_property = {
-    .is_share_subscribe = true,
-    .share_name = "group1",
-};
-
-static esp_mqtt5_disconnect_property_config_t disconnect_property = {
-    .session_expiry_interval = 60,
-    .disconnect_reason = 0,
-};
+static esp_mqtt5_publish_property_config_t publish_property = ESP_MQTT5_PUBLISH_PROPERTY_CONFIG();
+static esp_mqtt5_subscribe_property_config_t subscribe_property = ESP_MQTT5_SUBSCRIBE_PROPERTY_CONFIG();
+static esp_mqtt5_subscribe_property_config_t subscribe1_property = ESP_MQTT5_SUBSCRIBE1_PROPERTY_CONFIG();
+static esp_mqtt5_unsubscribe_property_config_t unsubscribe_property = ESP_MQTT5_UNSUBSCRIBE_PROPERTY_CONFIG();
+static esp_mqtt5_disconnect_property_config_t disconnect_property = ESP_MQTT5_DISCONNECT_PROPERTY_CONFIG();
 
 static void print_user_property(mqtt5_user_property_handle_t user_property)
 {
@@ -152,26 +118,26 @@ static void print_user_property(mqtt5_user_property_handle_t user_property)
 
 /* --------- TWAI TASK BEGIN ---------*/
 
-static void twai_receive_task(void *arg)
-{
-  xSemaphoreTake(rx_sem, portMAX_DELAY);
+// static void twai_receive_task(void *arg)
+// {
+//   xSemaphoreTake(rx_sem, portMAX_DELAY);
 
-  while (1)
-  {
-    twai_message_t rx_msg;
-    twai_receive(&rx_msg, portMAX_DELAY);
-    uint32_t data = 0;
-    for (int i = 0; i < rx_msg.data_length_code; i++)
-    {
-      data |= (rx_msg.data[i] << (i * 8));
-    }
-    ESP_LOGI(TAG_TWAI, "Received %u data bytes with value %" PRIu32, rx_msg.data_length_code, data);
-    vTaskDelay(100);
-  }
+//   while (1)
+//   {
+//     twai_message_t rx_msg;
+//     twai_receive(&rx_msg, portMAX_DELAY);
+//     uint32_t data = 0;
+//     for (int i = 0; i < rx_msg.data_length_code; i++)
+//     {
+//       data |= (rx_msg.data[i] << (i * 8));
+//     }
+//     ESP_LOGI(TAG_TWAI, "Received %u data bytes with value %" PRIu32, rx_msg.data_length_code, data);
+//     vTaskDelay(100);
+//   }
 
-  xSemaphoreGive(rx_sem);
-  vTaskDelete(NULL);
-}
+//   xSemaphoreGive(rx_sem);
+//   vTaskDelete(NULL);
+// }
 /* --------- TWAI TASK END ---------*/
 
 /* --------- UART_1 SEND_DATA BEGIN ---------*/
@@ -185,21 +151,21 @@ static void twai_receive_task(void *arg)
 /* --------- UART_1 SEND_DATA END ---------*/
 
 /* --------- UART_1 INIT BEGIN ---------*/
-void init(void)
-{
-  const uart_config_t uart_config = {
-      .baud_rate = 115200,
-      .data_bits = UART_DATA_8_BITS,
-      .parity = UART_PARITY_DISABLE,
-      .stop_bits = UART_STOP_BITS_1,
-      .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-      .source_clk = UART_SCLK_DEFAULT,
-  };
-  // We won't use a buffer for sending data.
-  uart_driver_install(UART_NUM_1, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
-  uart_param_config(UART_NUM_1, &uart_config);
-  uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-}
+// void init(void)
+// {
+//   const uart_config_t uart_config = {
+//       .baud_rate = 115200,
+//       .data_bits = UART_DATA_8_BITS,
+//       .parity = UART_PARITY_DISABLE,
+//       .stop_bits = UART_STOP_BITS_1,
+//       .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+//       .source_clk = UART_SCLK_DEFAULT,
+//   };
+//   // We won't use a buffer for sending data.
+//   uart_driver_install(UART_NUM_1, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
+//   uart_param_config(UART_NUM_1, &uart_config);
+//   uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+// }
 /* --------- UART_1 INIT END ---------*/
 
 /* --------- UART_1 CONFIGURE GPS BEGIN ---------*/
@@ -271,6 +237,8 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
   ESP_LOGD(TAG_MQTT, "Event dispatched from event loop base=%s, event_id=%" PRIi32, base, event_id);
   esp_mqtt_event_handle_t event = event_data;
   esp_mqtt_client_handle_t client = event->client;
+  ESP_LOGI(TAG_MQTT, "############## MQTT MQTT CLIENT: %p", client);
+
   int msg_id;
 
   ESP_LOGD(TAG_MQTT, "free heap size is %" PRIu32 ", minimum %" PRIu32, esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
@@ -278,13 +246,14 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
   {
   case MQTT_EVENT_CONNECTED:
     ESP_LOGI(TAG_MQTT, "MQTT_EVENT_CONNECTED");
-    // print_user_property(event->property->user_property);
-    // esp_mqtt5_client_set_user_property(&publish_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-    // esp_mqtt5_client_set_publish_property(client, &publish_property);
-    // msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 1);
-    // esp_mqtt5_client_delete_user_property(publish_property.user_property);
-    // publish_property.user_property = NULL;
-    // ESP_LOGI(TAG_MQTT, "sent publish successful, msg_id=%d", msg_id);
+    print_user_property(event->property->user_property);
+    esp_mqtt5_client_set_user_property(&publish_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
+    esp_mqtt5_client_set_publish_property(client, &publish_property);
+    msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 1);
+    esp_mqtt5_client_delete_user_property(publish_property.user_property);
+    publish_property.user_property = NULL;
+    ESP_LOGI(TAG_MQTT, "sent publish successful, msg_id=%d", msg_id);
+    mqttConnected = 1;
 
     // esp_mqtt5_client_set_user_property(&subscribe_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
     // esp_mqtt5_client_set_subscribe_property(client, &subscribe_property);
@@ -360,12 +329,12 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
 }
 /* --------- MQTT_EVENT_HANDLER END ---------*/
 
-
 /* --------- GPS_EVENT_HANDLER BEGIN ---------*/
-static void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+static void gps_event_handler(void *handler_args, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
   gps_t *gps = NULL;
-  esp_mqtt_client_handle_t client = event_handler_arg;
+  esp_mqtt_client_handle_t esp_mqtt_client = handler_args;
+  ESP_LOGI(TAG_MQTT, "############## MQTT GPS CLIENT: %p", esp_mqtt_client);
 
   switch (event_id)
   {
@@ -380,7 +349,30 @@ static void gps_event_handler(void *event_handler_arg, esp_event_base_t event_ba
              gps->date.year + YEAR_BASE, gps->date.month, gps->date.day,
              gps->tim.hour + TIME_ZONE, gps->tim.minute, gps->tim.second,
              gps->latitude, gps->longitude, gps->altitude, gps->speed);
-    int msg_id = esp_mqtt_client_publish(client, "OpenDataTelemetry/FSAELive/IC/001/rx", "message", 0, 1, 0);
+
+    //  char buffer;
+    //  int num = 42;
+    //  sprintf(buffer, "The number is %d", num);
+
+    // sprintf(buffer, "\"year\": %d, \"month\": %d, \"day\": %d,
+    //   \"hour\": %d, \"minute\": %d, \"second\": %d,
+    //   \"latitude\": %.05f°N, \"longitude\": %.05f°E, \"altitude\": %.02fm, \"speed\": %fm/s",
+    // gps->date.year + YEAR_BASE, gps->date.month, gps->date.day,
+    //  gps->tim.hour + TIME_ZONE, gps->tim.minute, gps->tim.second,
+    //  gps->latitude, gps->longitude, gps->altitude, gps->speed);
+
+    // // /* data buffers */
+    // uint8_t buff_up[1024]; /* buffer to compose the upstream packet */
+    // int buff_index = 0;
+    // // uint8_t buff_ack[32];
+    // /* start of JSON structure */
+    // memcpy((void *)(buff_up + buff_index), (void *)"{\"rxpk\":[", 9);
+
+    if (esp_mqtt_client)
+    {
+      printf("MQTT CONNECTED?: %d", mqttConnected);
+      int msg_id = esp_mqtt_client_publish(esp_mqtt_client, "OpenDataTelemetry/FSAELive/IC/001/rx", "{\"key\":\"value\"}", 0, 1, 0);
+    }
 
     break;
   case GPS_UNKNOWN:
@@ -393,84 +385,28 @@ static void gps_event_handler(void *event_handler_arg, esp_event_base_t event_ba
 }
 /* --------- GPS_EVENT_HANDLER END ---------*/
 
-
 /* --------- MQTT_APP BEGIN ---------*/
-static void mqtt5_app_start(void)
-{
-  esp_mqtt5_connection_property_config_t connect_property = {
-      .session_expiry_interval = 10,
-      .maximum_packet_size = 1024,
-      .receive_maximum = 65535,
-      .topic_alias_maximum = 2,
-      .request_resp_info = true,
-      .request_problem_info = true,
-      .will_delay_interval = 10,
-      .payload_format_indicator = true,
-      .message_expiry_interval = 10,
-      .response_topic = "/test/response",
-      .correlation_data = "123456",
-      .correlation_data_len = 6,
-  };
 
-  // esp_mqtt_client_config_t mqtt5_cfg = {
-  //     .broker.address.uri = CONFIG_MQTT_BROKER_URL,
-  //     .session.protocol_ver = MQTT_PROTOCOL_V_5,
-  //     .network.disable_auto_reconnect = true,
-  //     .credentials.username = "public",
-  //     .credentials.authentication.password = "public",
-      // .session.last_will.topic = "/topic/will",
-      // .session.last_will.msg = "i will leave",
-      // .session.last_will.msg_len = 12,
-      // .session.last_will.qos = 1,
-      // .session.last_will.retain = true,
-  };
-
-  // #if CONFIG_BROKER_URL_FROM_STDIN
-  //     char line[128];
-
-  //     if (strcmp(mqtt5_cfg.uri, "FROM_STDIN") == 0) {
-  //         int count = 0;
-  //         printf("Please enter url of mqtt broker\n");
-  //         while (count < 128) {
-  //             int c = fgetc(stdin);
-  //             if (c == '\n') {
-  //                 line[count] = '\0';
-  //                 break;
-  //             } else if (c > 0 && c < 127) {
-  //                 line[count] = c;
-  //                 ++count;
-  //             }
-  //             vTaskDelay(10 / portTICK_PERIOD_MS);
-  //         }
-  //         mqtt5_cfg.broker.address.uri = line;
-  //         printf("Broker url: %s\n", line);
-  //     } else {
-  //         ESP_LOGE(TAG, "Configuration mismatch: wrong broker url");
-  //         abort();
-  //     }
-  // #endif /* CONFIG_BROKER_URL_FROM_STDIN */
-
-  esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt5_cfg);
-
-  /* Set connection properties and user properties */
-  esp_mqtt5_client_set_user_property(&connect_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-  esp_mqtt5_client_set_user_property(&connect_property.will_user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
-  esp_mqtt5_client_set_connect_property(client, &connect_property);
-
-  /* If you call esp_mqtt5_client_set_user_property to set user properties, DO NOT forget to delete them.
-   * esp_mqtt5_client_set_connect_property will malloc buffer to store the user_property and you can delete it after
-   */
-  esp_mqtt5_client_delete_user_property(connect_property.user_property);
-  esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
-
-  /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
-  esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
-  esp_mqtt_client_start(client);
-}
 /* --------- MQTT_APP END ---------*/
 
 void app_main(void)
 {
+  ESP_LOGI(TAG_APP, "[APP] Startup..");
+  ESP_LOGI(TAG_APP, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
+  ESP_LOGI(TAG_APP, "[APP] IDF version: %s", esp_get_idf_version());
+  esp_log_level_set("*", ESP_LOG_INFO);
+  esp_log_level_set("mqtt_client", ESP_LOG_VERBOSE);
+  esp_log_level_set("mqtt_example", ESP_LOG_VERBOSE);
+  esp_log_level_set("transport_base", ESP_LOG_VERBOSE);
+  esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
+  esp_log_level_set("transport", ESP_LOG_VERBOSE);
+  esp_log_level_set("outbox", ESP_LOG_VERBOSE);
+
+  ESP_ERROR_CHECK(nvs_flash_init());
+  ESP_ERROR_CHECK(esp_netif_init());
+  ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+
   // init();
   // xTaskCreate(uart_rx_async_task, "uart_rx_task", 2048 * 2, NULL, configMAX_PRIORITIES - 1, NULL);
   // xTaskCreate(uart_tx_async_task, "uart_tx_async_task", 2048 * 2, NULL, configMAX_PRIORITIES - 2, NULL);
@@ -496,54 +432,37 @@ void app_main(void)
   // ESP_ERROR_CHECK(twai_driver_uninstall());
   // ESP_LOGI(TAG_TWAI, "Driver uninstalled");
   /* --------- TWAI END ---------*/
-
   
 
   /* --------- MQTT BEGIN ---------*/
-  ESP_LOGI(TAG_MQTT, "[APP] Startup..");
-  ESP_LOGI(TAG_MQTT, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
-  ESP_LOGI(TAG_MQTT, "[APP] IDF version: %s", esp_get_idf_version());
 
-  esp_log_level_set("*", ESP_LOG_INFO);
-  esp_log_level_set("mqtt_client", ESP_LOG_VERBOSE);
-  esp_log_level_set("mqtt_example", ESP_LOG_VERBOSE);
-  esp_log_level_set("transport_base", ESP_LOG_VERBOSE);
-  esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
-  esp_log_level_set("transport", ESP_LOG_VERBOSE);
-  esp_log_level_set("outbox", ESP_LOG_VERBOSE);
+  // mqtt5_app_start();
+  esp_mqtt5_connection_property_config_t connect_property = ESP_MQTT5_CONNECTION_PROPERTY_CONFIG();
+  esp_mqtt_client_config_t esp_mqtt_client_config = ESP_MQTT_CLIENT_CONFIG_DEFAULT();
+  esp_mqtt_client_handle_t esp_mqtt_client = esp_mqtt_client_init(&esp_mqtt_client_config);
+  esp_mqtt5_client_set_user_property(&connect_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
+  esp_mqtt5_client_set_user_property(&connect_property.will_user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
+  esp_mqtt5_client_set_connect_property(esp_mqtt_client, &connect_property);
 
-  ESP_ERROR_CHECK(nvs_flash_init());
-  ESP_ERROR_CHECK(esp_netif_init());
-  ESP_ERROR_CHECK(esp_event_loop_create_default());
+  /* If you call esp_mqtt5_client_set_user_property to set user properties, DO NOT forget to delete them.
+   * esp_mqtt5_client_set_connect_property will malloc buffer to store the user_property and you can delete it after
+   */
+  // esp_mqtt5_client_delete_user_property(connect_property.user_property);
+  // esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
 
-  // /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-  //  * Read "Establishing Wi-Fi or Ethernet Connection" section in
-  //  * examples/protocols/README.md for more information about this function.
-  //  */
-  ESP_ERROR_CHECK(example_connect());
-  
-  esp_mqtt_client_config_t mqtt5_cfg = {
-    .broker.address.uri = CONFIG_MQTT_BROKER_URL,
-    .session.protocol_ver = MQTT_PROTOCOL_V_5,
-    .network.disable_auto_reconnect = true,
-    .credentials.username = "public",
-    .credentials.authentication.password = "public",
-
-  mqtt5_app_start();
+  /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
+  esp_mqtt_client_register_event(esp_mqtt_client, ESP_EVENT_ANY_ID, mqtt5_event_handler, NULL);
+  esp_mqtt_client_start(esp_mqtt_client);
   /* --------- MQTT END ---------*/
 
-  /* --------- NMEA BEGIN ---------*/
-  /* NMEA parser configuration */
-  nmea_parser_config_t config = NMEA_PARSER_CONFIG_DEFAULT();
-  /* init NMEA parser library */
-  nmea_parser_handle_t nmea_hdl = nmea_parser_init(&config);
-  // GPS INIT
-  // send_gps_task();
-  /* register event handler for NMEA parser library */
-  nmea_parser_add_handler(nmea_hdl, gps_event_handler, NULL);
+  /* --------- UART_1 NMEA BEGIN ---------*/
+  // nmea_app_start();
+  nmea_parser_config_t nmea_parser_config = NMEA_PARSER_CONFIG_DEFAULT();
+  nmea_parser_handle_t nmea_hdl = nmea_parser_init(&nmea_parser_config);
+  nmea_parser_register_event(nmea_hdl, ESP_EVENT_ANY_ID, gps_event_handler, esp_mqtt_client);
 
-  vTaskDelay(10000 / portTICK_PERIOD_MS);
-  /* --------- NMEA END ---------*/
+  // vTaskDelay(10000 / portTICK_PERIOD_MS);
+  /* --------- UART_1 NMEA END ---------*/
 
   // xTaskCreatePinnedToCore(twai_receive_task, "TWAI_rx", 4096, NULL, RX_TASK_PRIO, NULL, tskNO_AFFINITY);
   // Cleanup
@@ -552,4 +471,7 @@ void app_main(void)
   // nmea_parser_remove_handler(nmea_hdl, gps_event_handler);
   /* deinit NMEA parser library */
   // nmea_parser_deinit(nmea_hdl);
+
+
+  ESP_ERROR_CHECK(example_connect());
 }

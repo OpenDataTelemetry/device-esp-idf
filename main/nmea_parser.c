@@ -992,11 +992,11 @@ esp_err_t nmea_parser_deinit(nmea_parser_handle_t nmea_hdl)
  *  - ESP_ERR_INVALIG_ARG: Invalid combination of event base and event id
  *  - Others: Fail
  */
-esp_err_t nmea_parser_add_handler(nmea_parser_handle_t nmea_hdl, esp_event_handler_t event_handler, void *handler_args)
+esp_err_t nmea_parser_register_event(nmea_parser_handle_t nmea_hdl, nmea_parser_event_id_t event, esp_event_handler_t event_handler, void *event_handler_arg)
 {
   esp_gps_t *esp_gps = (esp_gps_t *)nmea_hdl;
-  return esp_event_handler_register_with(esp_gps->event_loop_hdl, ESP_NMEA_EVENT, ESP_EVENT_ANY_ID,
-                                         event_handler, handler_args);
+  return esp_event_handler_register_with(esp_gps->event_loop_hdl, ESP_NMEA_EVENT, event,
+                                         event_handler, event_handler_arg);
 }
 
 /**
