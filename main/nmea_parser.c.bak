@@ -13,13 +13,7 @@
 #include "esp_log.h"
 #include "nmea_parser.h"
 
-/**
- * @brief NMEA Parser runtime buffer size
- *
- */
-#define NMEA_PARSER_RUNTIME_BUFFER_SIZE (CONFIG_NMEA_PARSER_RING_BUFFER_SIZE / 2)
-#define NMEA_MAX_STATEMENT_ITEM_LENGTH (16)
-#define NMEA_EVENT_LOOP_QUEUE_SIZE (16)
+
 
 /**
  * @brief Define of NMEA Parser Event base
@@ -29,29 +23,7 @@ ESP_EVENT_DEFINE_BASE(ESP_NMEA_EVENT);
 
 static const char *GPS_TAG = "nmea_parser";
 
-/**
- * @brief GPS parser library runtime structure
- *
- */
-typedef struct
-{
-  uint8_t item_pos;                              /*!< Current position in item */
-  uint8_t item_num;                              /*!< Current item number */
-  uint8_t asterisk;                              /*!< Asterisk detected flag */
-  uint8_t crc;                                   /*!< Calculated CRC value */
-  uint8_t parsed_statement;                      /*!< OR'd of statements that have been parsed */
-  uint8_t sat_num;                               /*!< Satellite number */
-  uint8_t sat_count;                             /*!< Satellite count */
-  uint8_t cur_statement;                         /*!< Current statement ID */
-  uint32_t all_statements;                       /*!< All statements mask */
-  char item_str[NMEA_MAX_STATEMENT_ITEM_LENGTH]; /*!< Current item */
-  gps_t parent;                                  /*!< Parent class */
-  uart_port_t uart_port;                         /*!< Uart port number */
-  uint8_t *buffer;                               /*!< Runtime buffer */
-  esp_event_loop_handle_t event_loop_hdl;        /*!< Event loop handle */
-  TaskHandle_t tsk_hdl;                          /*!< NMEA Parser task handle */
-  QueueHandle_t event_queue;                     /*!< UART event queue handle */
-} esp_gps_t;
+
 
 
 int sendData(const char *logName, const char *data)
@@ -92,7 +64,7 @@ int sendData(const char *logName, const char *data)
 
 static void gps_configure(void *arg)
 {
-  esp_gps_t *esp_gps = (esp_gps_t *)arg;
+  nmea_parser_config_storage_t *esp_gps = (nmea_parser_config_storage_t *)arg;
   uart_event_t event;
   int len = 0;
 
@@ -219,10 +191,10 @@ static const char *GPS_TASK_TAG = "GPS_TASK";
 /**
  * @brief parse latitude or longitude
  *              format of latitude in NMEA is ddmm.sss and longitude is dddmm.sss
- * @param esp_gps esp_gps_t type object
+ * @param esp_gps nmea_parser_config_storage_t type object
  * @return float Latitude or Longitude value (unit: degree)
  */
-static float parse_lat_long(esp_gps_t *esp_gps)
+static float parse_lat_long(nmea_parser_config_storage_t *esp_gps)
 {
   float ll = strtof(esp_gps->item_str, NULL);
   int deg = ((int)ll) / 100;
@@ -245,9 +217,9 @@ static inline uint8_t convert_two_digit2number(const char *digit_char)
 /**
  * @brief Parse UTC time in GPS statements
  *
- * @param esp_gps esp_gps_t type object
+ * @param esp_gps nmea_parser_config_storage_t type object
  */
-static void parse_utc_time(esp_gps_t *esp_gps)
+static void parse_utc_time(nmea_parser_config_storage_t *esp_gps)
 {
   esp_gps->parent.tim.hour = convert_two_digit2number(esp_gps->item_str + 0);
   esp_gps->parent.tim.minute = convert_two_digit2number(esp_gps->item_str + 2);
@@ -269,9 +241,9 @@ static void parse_utc_time(esp_gps_t *esp_gps)
 /**
  * @brief Parse GGA statements
  *
- * @param esp_gps esp_gps_t type object
+ * @param esp_gps nmea_parser_config_storage_t type object
  */
-static void parse_gga(esp_gps_t *esp_gps)
+static void parse_gga(nmea_parser_config_storage_t *esp_gps)
 {
   /* Process GGA statement */
   switch (esp_gps->item_num)
@@ -322,9 +294,9 @@ static void parse_gga(esp_gps_t *esp_gps)
 /**
  * @brief Parse GSA statements
  *
- * @param esp_gps esp_gps_t type object
+ * @param esp_gps nmea_parser_config_storage_t type object
  */
-static void parse_gsa(esp_gps_t *esp_gps)
+static void parse_gsa(nmea_parser_config_storage_t *esp_gps)
 {
   /* Process GSA statement */
   switch (esp_gps->item_num)
@@ -356,9 +328,9 @@ static void parse_gsa(esp_gps_t *esp_gps)
 /**
  * @brief Parse GSV statements
  *
- * @param esp_gps esp_gps_t type object
+ * @param esp_gps nmea_parser_config_storage_t type object
  */
-static void parse_gsv(esp_gps_t *esp_gps)
+static void parse_gsv(nmea_parser_config_storage_t *esp_gps)
 {
   /* Process GSV statement */
   switch (esp_gps->item_num)
@@ -410,9 +382,9 @@ static void parse_gsv(esp_gps_t *esp_gps)
 /**
  * @brief Parse RMC statements
  *
- * @param esp_gps esp_gps_t type object
+ * @param esp_gps nmea_parser_config_storage_t type object
  */
-static void parse_rmc(esp_gps_t *esp_gps)
+static void parse_rmc(nmea_parser_config_storage_t *esp_gps)
 {
   /* Process GPRMC statement */
   switch (esp_gps->item_num)
@@ -465,9 +437,9 @@ static void parse_rmc(esp_gps_t *esp_gps)
 /**
  * @brief Parse GLL statements
  *
- * @param esp_gps esp_gps_t type object
+ * @param esp_gps nmea_parser_config_storage_t type object
  */
-static void parse_gll(esp_gps_t *esp_gps)
+static void parse_gll(nmea_parser_config_storage_t *esp_gps)
 {
   /* Process GPGLL statement */
   switch (esp_gps->item_num)
@@ -506,9 +478,9 @@ static void parse_gll(esp_gps_t *esp_gps)
 /**
  * @brief Parse VTG statements
  *
- * @param esp_gps esp_gps_t type object
+ * @param esp_gps nmea_parser_config_storage_t type object
  */
-static void parse_vtg(esp_gps_t *esp_gps)
+static void parse_vtg(nmea_parser_config_storage_t *esp_gps)
 {
   /* Process GPVGT statement */
   switch (esp_gps->item_num)
@@ -531,13 +503,45 @@ static void parse_vtg(esp_gps_t *esp_gps)
 }
 #endif
 
+esp_err_t nmea_parser_start(nmea_parser_handle_t nmea_parser)
+{
+    if (!nmea_parser) {
+        ESP_LOGE(GPS_TAG, "nmea_parser was not initialized");
+        return ESP_ERR_INVALID_ARG;
+    }
+    NMEA_API_LOCK(nmea_parser);
+    // if (nmea_parser->state != NMEA_STATE_INIT && nmea_parser->state != MQTT_STATE_DISCONNECTED) {
+      if (nmea_parser->state != NMEA_STATE_INIT) {
+        ESP_LOGE(GPS_TAG, "nmea_parser has started");
+        NMEA_API_UNLOCK(nmea_parser);
+        return ESP_FAIL;
+    }
+    esp_err_t err = ESP_OK;
+// #if MQTT_CORE_SELECTION_ENABLED
+//     ESP_LOGD(GPS_TAG, "Core selection enabled on %u", MQTT_TASK_CORE);
+//     if (xTaskCreatePinnedToCore(esp_mqtt_task, "mqtt_task", nmea_parser->config->task_stack, nmea_parser, nmea_parser->config->task_prio, &nmea_parser->task_handle, MQTT_TASK_CORE) != pdTRUE) {
+//         ESP_LOGE(GPS_TAG, "Error create mqtt task");
+//         err = ESP_FAIL;
+//     }
+// #else
+    ESP_LOGD(GPS_TAG, "Core selection disabled");
+    if (xTaskCreate(gps_configure, "gps_configure", CONFIG_NMEA_PARSER_TASK_STACK_SIZE, nmea_parser, CONFIG_NMEA_PARSER_TASK_PRIORITY, NULL) != pdTRUE) {
+        ESP_LOGE(GPS_TAG, "Error create mqtt task");
+        err = ESP_FAIL;
+    }
+// #endif
+    NMEA_API_UNLOCK(nmea_parser);
+    return err;
+}
+
+
 /**
  * @brief Parse received item
  *
- * @param esp_gps esp_gps_t type object
+ * @param esp_gps nmea_parser_config_storage_t type object
  * @return esp_err_t ESP_OK on success, ESP_FAIL on error
  */
-static esp_err_t parse_item(esp_gps_t *esp_gps)
+static esp_err_t parse_item(nmea_parser_config_storage_t *esp_gps)
 {
   esp_err_t err = ESP_OK;
   /* start of a statement */
@@ -640,11 +644,11 @@ out:
 /**
  * @brief Parse NMEA statements from GPS receiver
  *
- * @param esp_gps esp_gps_t type object
+ * @param esp_gps nmea_parser_config_storage_t type object
  * @param len number of bytes to decode
  * @return esp_err_t ESP_OK on success, ESP_FAIL on error
  */
-static esp_err_t gps_decode(esp_gps_t *esp_gps, size_t len)
+static esp_err_t gps_decode(nmea_parser_config_storage_t *esp_gps, size_t len)
 {
   const uint8_t *d = esp_gps->buffer;
   while (*d)
@@ -775,9 +779,9 @@ static esp_err_t gps_decode(esp_gps_t *esp_gps, size_t len)
 /**
  * @brief Handle when a pattern has been detected by uart
  *
- * @param esp_gps esp_gps_t type object
+ * @param esp_gps nmea_parser_config_storage_t type object
  */
-static void esp_handle_uart_pattern(esp_gps_t *esp_gps)
+static void esp_handle_uart_pattern(nmea_parser_config_storage_t *esp_gps)
 {
   int pos = uart_pattern_pop_pos(esp_gps->uart_port);
   if (pos != -1)
@@ -806,7 +810,7 @@ static void esp_handle_uart_pattern(esp_gps_t *esp_gps)
  */
 static void nmea_parser_task_entry(void *arg)
 {
-  esp_gps_t *esp_gps = (esp_gps_t *)arg;
+  nmea_parser_config_storage_t *esp_gps = (nmea_parser_config_storage_t *)arg;
   uart_event_t event;
   while (1)
   {
@@ -855,41 +859,60 @@ static void nmea_parser_task_entry(void *arg)
  * @param config Configuration of NMEA Parser
  * @return nmea_parser_handle_t handle of nmea_parser
  */
-nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
+uart_1_handle_t uart_1_init(const uart_1_config_t *config)
 {
-  esp_gps_t *esp_gps = calloc(1, sizeof(esp_gps_t));
-  if (!esp_gps)
-  {
-    ESP_LOGE(GPS_TAG, "calloc memory for esp_fps failed");
-    goto err_gps;
-  }
-  esp_gps->buffer = calloc(1, NMEA_PARSER_RUNTIME_BUFFER_SIZE);
-  if (!esp_gps->buffer)
-  {
-    ESP_LOGE(GPS_TAG, "calloc memory for runtime buffer failed");
-    goto err_buffer;
-  }
-#if CONFIG_NMEA_STATEMENT_GSA
-  esp_gps->all_statements |= (1 << STATEMENT_GSA);
-#endif
-#if CONFIG_NMEA_STATEMENT_GSV
-  esp_gps->all_statements |= (1 << STATEMENT_GSV);
-#endif
-#if CONFIG_NMEA_STATEMENT_GGA
-  esp_gps->all_statements |= (1 << STATEMENT_GGA);
-#endif
-#if CONFIG_NMEA_STATEMENT_RMC
-  esp_gps->all_statements |= (1 << STATEMENT_RMC);
-#endif
-#if CONFIG_NMEA_STATEMENT_GLL
-  esp_gps->all_statements |= (1 << STATEMENT_GLL);
-#endif
-#if CONFIG_NMEA_STATEMENT_VTG
-  esp_gps->all_statements |= (1 << STATEMENT_VTG);
-#endif
-  /* Set attributes */
-  esp_gps->uart_port = config->uart.uart_port;
-  esp_gps->all_statements &= 0xFE;
+
+  // nmea_parser_config_storage_t *esp_gps = calloc(1, sizeof(nmea_parser_config_storage_t));
+  // uart_1_handle_t uart_1 = calloc(1, sizeof(uart_1_handle_t));
+  // nmea_parser_config_storage_t *esp_gps = nmea_parser->config;
+  
+  uart_1_handle_t uart_1 = heap_caps_calloc(1, sizeof(struct uart_1), MALLOC_CAP_DEFAULT);
+      // if (!create_client_data(client)) {
+      //     goto _mqtt_init_failed;
+      // }
+  
+      // if (esp_mqtt_set_config(client, config) != ESP_OK) {
+      //     goto _mqtt_init_failed;
+      // }
+
+      esp_event_loop_args_t no_task_loop = {
+        .queue_size = 1,
+        .task_name = NULL,
+    };
+    esp_event_loop_create(&no_task_loop, &uart_1->config->event_loop_handle);
+
+  // if (!uart_1)
+  // {
+  //   ESP_LOGE(GPS_TAG, "calloc memory for esp_fps failed");
+  //   goto err_gps;
+  // }
+  // esp_gps->buffer = calloc(1, NMEA_PARSER_RUNTIME_BUFFER_SIZE);
+  // if (!esp_gps->buffer)
+  // {
+  //   ESP_LOGE(GPS_TAG, "calloc memory for runtime buffer failed");
+  //   goto err_buffer;
+  // }
+// #if CONFIG_NMEA_STATEMENT_GSA
+//   esp_gps->all_statements |= (1 << STATEMENT_GSA);
+// #endif
+// #if CONFIG_NMEA_STATEMENT_GSV
+//   esp_gps->all_statements |= (1 << STATEMENT_GSV);
+// #endif
+// #if CONFIG_NMEA_STATEMENT_GGA
+//   esp_gps->all_statements |= (1 << STATEMENT_GGA);
+// #endif
+// #if CONFIG_NMEA_STATEMENT_RMC
+//   esp_gps->all_statements |= (1 << STATEMENT_RMC);
+// #endif
+// #if CONFIG_NMEA_STATEMENT_GLL
+//   esp_gps->all_statements |= (1 << STATEMENT_GLL);
+// #endif
+// #if CONFIG_NMEA_STATEMENT_VTG
+//   esp_gps->all_statements |= (1 << STATEMENT_VTG);
+// #endif
+//   /* Set attributes */
+//   esp_gps->uart_port = config->uart.uart_port;
+//   esp_gps->all_statements &= 0xFE;
   /* Install UART friver */
   uart_config_t uart_config = {
       .baud_rate = config->uart.baud_rate,
@@ -903,18 +926,18 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
                           config->uart.event_queue_size, &esp_gps->event_queue, 0) != ESP_OK)
   {
     ESP_LOGE(GPS_TAG, "install uart driver failed");
-    goto err_uart_install;
+    // goto err_uart_install;
   }
   if (uart_param_config(esp_gps->uart_port, &uart_config) != ESP_OK)
   {
     ESP_LOGE(GPS_TAG, "config uart parameter failed");
-    goto err_uart_config;
+    // goto err_uart_config;
   }
   if (uart_set_pin(esp_gps->uart_port, config->uart.tx_pin, config->uart.rx_pin,
                    UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE) != ESP_OK)
   {
     ESP_LOGE(GPS_TAG, "config uart gpio failed");
-    goto err_uart_config;
+    // goto err_uart_config;
   }
   /* Set pattern interrupt, used to detect the end of a line */
   uart_enable_pattern_det_baud_intr(esp_gps->uart_port, '\n', 1, 9, 0, 0);
@@ -928,39 +951,47 @@ nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config)
   if (esp_event_loop_create(&loop_args, &esp_gps->event_loop_hdl) != ESP_OK)
   {
     ESP_LOGE(GPS_TAG, "create event loop faild");
-    goto err_eloop;
+    // goto err_eloop;
   }
 
-  //RC-EDIT
-  xTaskCreate(gps_configure, "gps_configure", CONFIG_NMEA_PARSER_TASK_STACK_SIZE, esp_gps, CONFIG_NMEA_PARSER_TASK_PRIORITY, NULL);
+  return uart_1;
+  // //RC-EDIT
+  // xTaskCreate(gps_configure, "gps_configure", CONFIG_NMEA_PARSER_TASK_STACK_SIZE, esp_gps, CONFIG_NMEA_PARSER_TASK_PRIORITY, NULL);
 
+
+
+  // TODO: NOT STARTS TASK HERE. JUST CONFIG
   /* Create NMEA Parser task */
-  BaseType_t err = xTaskCreate(
-      nmea_parser_task_entry,
-      "nmea_parser",
-      CONFIG_NMEA_PARSER_TASK_STACK_SIZE,
-      esp_gps,
-      CONFIG_NMEA_PARSER_TASK_PRIORITY,
-      &esp_gps->tsk_hdl);
-  if (err != pdTRUE)
-  {
-    ESP_LOGE(GPS_TAG, "create NMEA Parser task failed");
-    goto err_task_create;
-  }
-  ESP_LOGI(GPS_TAG, "NMEA Parser init OK");
-  return esp_gps;
-  /*Error Handling*/
-err_task_create:
-  esp_event_loop_delete(esp_gps->event_loop_hdl);
-err_eloop:
-err_uart_install:
-  uart_driver_delete(esp_gps->uart_port);
-err_uart_config:
-err_buffer:
-  free(esp_gps->buffer);
-err_gps:
-  free(esp_gps);
-  return NULL;
+//   BaseType_t err = xTaskCreate(
+//       nmea_parser_task_entry,
+//       "nmea_parser",
+//       CONFIG_NMEA_PARSER_TASK_STACK_SIZE,
+//       esp_gps,
+//       CONFIG_NMEA_PARSER_TASK_PRIORITY,
+//       &esp_gps->tsk_hdl);
+//   if (err != pdTRUE)
+//   {
+//     ESP_LOGE(GPS_TAG, "create NMEA Parser task failed");
+//     goto err_task_create;
+//   }
+
+//   ESP_LOGI(GPS_TAG, "NMEA Parser init OK");
+//   // return esp_gps;
+//   return nmea_parser;
+  
+
+//   /*Error Handling*/
+// err_task_create:
+//   esp_event_loop_delete(esp_gps->event_loop_hdl);
+// err_eloop:
+// err_uart_install:
+//   uart_driver_delete(esp_gps->uart_port);
+// err_uart_config:
+// err_buffer:
+//   free(esp_gps->buffer);
+// err_gps:
+//   free(esp_gps);
+//   return NULL;
 }
 
 /**
@@ -969,9 +1000,9 @@ err_gps:
  * @param nmea_hdl handle of NMEA parser
  * @return esp_err_t ESP_OK on success,ESP_FAIL on error
  */
-esp_err_t nmea_parser_deinit(nmea_parser_handle_t nmea_hdl)
+esp_err_t nmea_parser_deinit(uart_1_handle_t nmea_hdl)
 {
-  esp_gps_t *esp_gps = (esp_gps_t *)nmea_hdl;
+  nmea_parser_config_storage_t *esp_gps = (nmea_parser_config_storage_t *)nmea_hdl;
   vTaskDelete(esp_gps->tsk_hdl);
   esp_event_loop_delete(esp_gps->event_loop_hdl);
   esp_err_t err = uart_driver_delete(esp_gps->uart_port);
@@ -994,7 +1025,10 @@ esp_err_t nmea_parser_deinit(nmea_parser_handle_t nmea_hdl)
  */
 esp_err_t nmea_parser_register_event(nmea_parser_handle_t nmea_hdl, nmea_parser_event_id_t event, esp_event_handler_t event_handler, void *event_handler_arg)
 {
-  esp_gps_t *esp_gps = (esp_gps_t *)nmea_hdl;
+  if (nmea_hdl == NULL) {
+    return ESP_ERR_INVALID_ARG;
+}
+  nmea_parser_config_storage_t *esp_gps = (nmea_parser_config_storage_t *)nmea_hdl;
   return esp_event_handler_register_with(esp_gps->event_loop_hdl, ESP_NMEA_EVENT, event,
                                          event_handler, event_handler_arg);
 }
@@ -1011,6 +1045,6 @@ esp_err_t nmea_parser_register_event(nmea_parser_handle_t nmea_hdl, nmea_parser_
  */
 esp_err_t nmea_parser_remove_handler(nmea_parser_handle_t nmea_hdl, esp_event_handler_t event_handler)
 {
-  esp_gps_t *esp_gps = (esp_gps_t *)nmea_hdl;
+  nmea_parser_config_storage_t *esp_gps = (nmea_parser_config_storage_t *)nmea_hdl;
   return esp_event_handler_unregister_with(esp_gps->event_loop_hdl, ESP_NMEA_EVENT, ESP_EVENT_ANY_ID, event_handler);
 }

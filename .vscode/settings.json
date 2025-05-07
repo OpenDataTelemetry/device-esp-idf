@@ -17,6 +17,11 @@
     "twai.h": "c",
     "esp_types.h": "c",
     "esp_event.h": "c",
-    "backmain": "c"
+    "backmain": "c",
+    "*.bak": "c",
+    "cstddef": "c",
+    "limits": "c",
+    "nmea_parser.h": "c",
+    "stdint.h": "c"
   }
 }

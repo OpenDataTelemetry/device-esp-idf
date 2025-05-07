@@ -31,8 +31,8 @@ menu "Application Configuration"
       int "TWAI TX GPIO number"
       default 21 if IDF_TARGET_ESP32
       default 1 if IDF_TARGET_ESP32S3
-      default 0 if IDF_TARGET_ESP32C6
-      default 0
+      default 4 if IDF_TARGET_ESP32C6
+      default 21
       help
         This option selects the GPIO pin used for the TX signal. Connect the
         TX signal to your transceiver.
@@ -40,9 +40,73 @@ menu "Application Configuration"
     config TWAI_RX_GPIO_NUM
       int "TWAI RX GPIO number"
       default 22 if IDF_TARGET_ESP32
-      default 41 if IDF_TARGET_ESP32S3
-      default 1 if IDF_TARGET_ESP32C6
+      default 21 if IDF_TARGET_ESP32S3
+      default 9 if IDF_TARGET_ESP32C6
+      default 22
+      help
+        This option selects the GPIO pin used for the RX signal. Connect the
+        RX signal to your transceiver.
+  endmenu
+
+  menu "UART_1 Configuration"
+    config UART_1_TX_GPIO_NUM
+      int "UART_1 TX GPIO number"
+      default 12 if IDF_TARGET_ESP32
+      default 18 if IDF_TARGET_ESP32S3
+      default 14 if IDF_TARGET_ESP32C6
+      default 12
+      help
+        This option selects the GPIO pin used for the TX signal. Connect the
+        TX signal to your transceiver.
+
+    config UART_1_RX_GPIO_NUM
+      int "UART_1 RX GPIO number"
+      default 14 if IDF_TARGET_ESP32
+      default 17 if IDF_TARGET_ESP32S3
+      default 15 if IDF_TARGET_ESP32C6
+      default 14
+      help
+        This option selects the GPIO pin used for the RX signal. Connect the
+        RX signal to your transceiver.
+  endmenu
+
+  menu "UART_2 Configuration"
+    config UART_2_TX_GPIO_NUM
+      int "UART_2 TX GPIO number"
+      default 16 if IDF_TARGET_ESP32
+      default 33 if IDF_TARGET_ESP32S3
+      default 2 if IDF_TARGET_ESP32C6
+      default 16
+      help
+        This option selects the GPIO pin used for the TX signal. Connect the
+        TX signal to your transceiver.
+
+    config UART_2_RX_GPIO_NUM
+      int "UART_2 RX GPIO number"
+      default 17 if IDF_TARGET_ESP32
+      default 45 if IDF_TARGET_ESP32S3
+      default 3 if IDF_TARGET_ESP32C6
+      default 17
+      help
+        This option selects the GPIO pin used for the RX signal. Connect the
+        RX signal to your transceiver.
+  endmenu
+
+  menu "I2C Configuration"
+    config I2C_SCL_GPIO_NUM
+      int "I2C SCL GPIO number"
+      default 2 if IDF_TARGET_ESP32
+      default 0 if IDF_TARGET_ESP32C6
       default 2
+      help
+        This option selects the GPIO pin used for the TX signal. Connect the
+        TX signal to your transceiver.
+
+    config I2C_SDA_GPIO_NUM
+      int "I2C SDA GPIO number"
+      default 4 if IDF_TARGET_ESP32
+      default 1 if IDF_TARGET_ESP32C6
+      default 4
       help
         This option selects the GPIO pin used for the RX signal. Connect the
         RX signal to your transceiver.

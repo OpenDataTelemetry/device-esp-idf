@@ -576,6 +576,27 @@ CONFIG_TWAI_RX_GPIO_NUM=21
 # end of TWAI Configuration
 
 #
+# UART_1 Configuration
+#
+CONFIG_UART_1_TX_GPIO_NUM=18
+CONFIG_UART_1_RX_GPIO_NUM=17
+# end of UART_1 Configuration
+
+#
+# UART_2 Configuration
+#
+CONFIG_UART_2_TX_GPIO_NUM=33
+CONFIG_UART_2_RX_GPIO_NUM=45
+# end of UART_2 Configuration
+
+#
+# I2C Configuration
+#
+CONFIG_I2C_SCL_GPIO_NUM=2
+CONFIG_I2C_SDA_GPIO_NUM=4
+# end of I2C Configuration
+
+#
 # NMEA Modem
 #
 CONFIG_ENV_GPIO_RANGE_MIN=0
